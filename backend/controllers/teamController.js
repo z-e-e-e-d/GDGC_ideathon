@@ -5,18 +5,30 @@ const mongoose = require("mongoose");
 // Create a new team
 const createTeam = async (req, res) => {
   try {
-    const { name, captain, players, maxPlayers, skillLevel } = req.body;
-
-    // Validate captain exists
-    const captainExists = await Player.findById(captain);
-    if (!captainExists) {
-      return res.status(404).json({ message: "Captain not found" });
+    // Only logged-in captains can create a team
+    // Allow both captains and admins to create teams
+    if (req.user.role !== "captain" && req.user.role !== "admin") {
+      return res
+        .status(403)
+        .json({ message: "Only captains and admins can create teams" });
     }
+
+    const { name, players, maxPlayers, skillLevel } = req.body;
+
+    const captainId = req.user._id;
+
+    // Automatically include captain in players array
+    const teamPlayers = players
+      ? [
+          captainId,
+          ...players.filter((p) => p.toString() !== captainId.toString()),
+        ]
+      : [captainId];
 
     const team = await Team.create({
       name,
-      captain,
-      players: players || [],
+      captain: captainId,
+      players: teamPlayers,
       maxPlayers,
       skillLevel,
     });
@@ -61,24 +73,50 @@ const getTeamById = async (req, res) => {
 };
 
 // Update a team
+// Update a team
 const updateTeam = async (req, res) => {
   try {
     const { id } = req.params;
     const updates = req.body;
 
-    if (updates.captain) {
-      const captainExists = await Player.findById(updates.captain);
-      if (!captainExists) {
-        return res.status(404).json({ message: "Captain not found" });
-      }
-    }
-
-    const team = await Team.findByIdAndUpdate(id, updates, { new: true });
+    // Find the existing team first
+    const team = await Team.findById(id);
     if (!team) {
       return res.status(404).json({ message: "Team not found" });
     }
 
-    res.json({ message: "Team updated", team });
+    // Authorization: Only the team's captain or an admin can update
+    const isTeamCaptain = team.captain.toString() === req.user._id.toString();
+    const isAdmin = req.user.role === "admin";
+
+    if (!isTeamCaptain && !isAdmin) {
+      return res.status(403).json({ 
+        message: "Only the team captain or admin can update this team" 
+      });
+    }
+
+    // If updating the captain, validate the new captain exists
+    if (updates.captain) {
+      const newCaptain = await Player.findById(updates.captain);
+      if (!newCaptain) {
+        return res.status(404).json({ message: "New captain not found" });
+      }
+
+      // Ensure the new captain is in the players array
+      if (!team.players.includes(updates.captain)) {
+        updates.players = [...(updates.players || team.players), updates.captain];
+      }
+    }
+
+    // Perform the update
+    const updatedTeam = await Team.findByIdAndUpdate(id, updates, { 
+      new: true,
+      runValidators: true 
+    })
+      .populate("captain", "fullName email")
+      .populate("players", "fullName email");
+
+    res.json({ message: "Team updated", team: updatedTeam });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Server error", error: err.message });
@@ -102,10 +140,51 @@ const deleteTeam = async (req, res) => {
   }
 };
 
+// Add a player to a team (by captain)
+const addPlayerToTeam = async (req, res) => {
+  try {
+    const { teamId } = req.params;
+    const { playerId } = req.body;
+
+    const team = await Team.findById(teamId);
+    if (!team) return res.status(404).json({ message: "Team not found" });
+
+    // Only captain can add players
+    if (team.captain.toString() !== req.user._id.toString()) {
+      return res
+        .status(403)
+        .json({ message: "Only the captain can add players" });
+    }
+
+    // Check player exists
+    const player = await Player.findById(playerId);
+    if (!player) return res.status(404).json({ message: "Player not found" });
+
+    // Check duplicates
+    if (team.players.includes(playerId)) {
+      return res.status(400).json({ message: "Player already in team" });
+    }
+
+    // Check maxPlayers limit
+    if (team.players.length >= team.maxPlayers) {
+      return res.status(400).json({ message: "Team is full" });
+    }
+
+    team.players.push(playerId);
+    await team.save();
+
+    res.json({ message: "Player added to team", team });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
+
 module.exports = {
   createTeam,
   getAllTeams,
   getTeamById,
   updateTeam,
   deleteTeam,
+  addPlayerToTeam,
 };

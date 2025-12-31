@@ -40,12 +40,15 @@ const auth = (roles = []) => {
       }
 
       // Optional: prevent unverified owners from accessing certain routes
-      if (decoded.role === "owner" && user.verification?.status !== "approved") {
+      if (
+        decoded.role === "owner" &&
+        user.verification?.status !== "approved"
+      ) {
         return res.status(403).json({ message: "Owner account not approved" });
       }
 
       // Role check
-      if (roles.length && !roles.includes(decoded.role)) {
+      if (roles.length && !roles.includes(user.role)) {
         return res.status(403).json({ message: "Forbidden" });
       }
 
