@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const protect = require("../middlewares/protect"); // optional: protect routes
+const protect = require("../middlewares/auth"); // optional: protect routes
 const {
   createStadium,
   getAllStadiums,

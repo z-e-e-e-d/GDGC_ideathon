@@ -3,8 +3,9 @@ const Admin = require("../models/adminModel");
 const Owner = require("../models/ownerModel");
 const Player = require("../models/playerModel");
 
+// Middleware: authenticate and authorize roles
 // roles = array of allowed roles, e.g., ["admin", "owner"]
-const protect = (roles = []) => {
+const auth = (roles = []) => {
   return async (req, res, next) => {
     const authHeader = req.headers.authorization;
 
@@ -18,7 +19,7 @@ const protect = (roles = []) => {
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
       let user;
 
-      // Fetch user from the correct collection based on role
+      // Fetch user from the correct collection
       switch (decoded.role) {
         case "admin":
           user = await Admin.findById(decoded.id);
@@ -57,4 +58,4 @@ const protect = (roles = []) => {
   };
 };
 
-module.exports = protect;
+module.exports = auth;
