@@ -6,12 +6,6 @@ const MatchSchema = new mongoose.Schema({
     required: true,
   },
 
-  slot: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "Slot",
-    required: true,
-  },
-
   teamA: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Team",
