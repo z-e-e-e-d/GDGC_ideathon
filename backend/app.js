@@ -8,7 +8,7 @@ dotenv.config();
 
 
 const authRoutes = require("./routes/authRoute");
-const fileRoutes = require("./routes/fileRoute");
+// const fileRoutes = require("./routes/fileRoute");
 
 const app = express();
 
@@ -41,10 +41,10 @@ mongoose
   });
 
 app.use("/api/auth", authRoutes);
-app.use("/api/files", fileRoutes);
+// app.use("/api/files", fileRoutes);
 
 app.get("/", (req, res) => {
-  res.send("OPOW Website API");
+  res.send(" Website API");
 });
 
 app.use((err, req, res, next) => {

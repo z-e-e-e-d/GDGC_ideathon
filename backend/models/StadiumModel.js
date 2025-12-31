@@ -1,3 +1,4 @@
+const mongoose = require("mongoose");
 const StadiumSchema = new mongoose.Schema({
   name: { type: String, required: true },
 

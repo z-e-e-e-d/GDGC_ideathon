@@ -1,3 +1,4 @@
+const mongoose = require("mongoose");
 const PlayerSchema = new mongoose.Schema({
   fullName: { type: String, required: true },
 

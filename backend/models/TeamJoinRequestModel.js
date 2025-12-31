@@ -1,3 +1,4 @@
+const mongoose = require("mongoose");
 const TeamJoinRequestSchema = new mongoose.Schema({
   team: {
     type: mongoose.Schema.Types.ObjectId,
