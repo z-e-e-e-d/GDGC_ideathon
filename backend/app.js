@@ -10,6 +10,7 @@ dotenv.config();
 const authRoutes = require("./routes/authRoute");
 const stadiumRoutes = require("./routes/stadiumRoute");
 const adminRoutes = require("./routes/adminRoute");
+const teamsRoutes = require ("./routes/teamRoute");
 // const fileRoutes = require("./routes/fileRoute");
 
 const app = express();
@@ -45,6 +46,7 @@ mongoose
 app.use("/api/auth", authRoutes);
 app.use("/api/stadium", stadiumRoutes);
 app.use("/api/admin", adminRoutes);
+app.use("/api/teams", teamsRoutes);
 // app.use("/api/files", fileRoutes);
 
 app.get("/", (req, res) => {

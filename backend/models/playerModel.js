@@ -18,11 +18,6 @@ const PlayerSchema = new mongoose.Schema({
     enum: ["beginner", "intermediate", "advanced"],
   },
 
-  team: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "Team",
-  },
-
   createdAt: { type: Date, default: Date.now },
 });
 
