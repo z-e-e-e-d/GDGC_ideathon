@@ -1,15 +1,13 @@
-const SlotSchema = new mongoose.Schema({
-  stadium: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "Stadium",
-    required: true,
+const AdminSchema = new mongoose.Schema({
+  fullName: { type: String, required: true },
+
+  email: { type: String, unique: true, required: true },
+  password: { type: String, required: true },
+
+  role: {
+    type: String,
+    default: "admin",
   },
-
-  date: { type: Date, required: true },
-  startTime: String,
-  endTime: String,
-
-  isBooked: { type: Boolean, default: false },
 
   createdAt: { type: Date, default: Date.now },
 });
