@@ -9,7 +9,7 @@ const generateToken  = require("../utils/generateTokens");
 // ===============================
 const ownerSignup = async (req, res) => {
   try {
-    const { fullName, email, password, documentUrl } = req.body;
+    const { fullName, email, password } = req.body;
 
     const existingOwner = await Owner.findOne({ email });
     if (existingOwner) {
@@ -17,6 +17,8 @@ const ownerSignup = async (req, res) => {
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
+
+    const documentUrl = req.file ? req.file.path : null;
 
     const owner = await Owner.create({
       fullName,
@@ -128,11 +130,20 @@ const login = async (req, res) => {
   }
 };
 
-// ===============================
-// EXPORTS
-// ===============================
+// controllers/authController.js
+const logout = async (req, res) => {
+  try {
+    // Since JWT is stateless, we just inform the client to delete the token
+    res.status(200).json({ message: "Logout successful. Please delete the token on client." });
+  } catch (err) {
+    console.error("Logout error:", err.message);
+    res.status(500).json({ message: err.message });
+  }
+};
+
 module.exports = {
   ownerSignup,
   playerSignup,
   login,
+  logout,
 };
