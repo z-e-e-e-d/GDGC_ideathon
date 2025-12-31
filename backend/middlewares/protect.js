@@ -22,3 +22,5 @@ const protect = (roles = []) => {
     }
   };
 };
+
+module.exports = protect; // ✅ must export like this

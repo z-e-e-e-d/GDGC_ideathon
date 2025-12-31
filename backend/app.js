@@ -8,6 +8,7 @@ dotenv.config();
 
 
 const authRoutes = require("./routes/authRoute");
+const stadiumRoutes = require("./routes/stadiumRoute");
 // const fileRoutes = require("./routes/fileRoute");
 
 const app = express();
@@ -41,6 +42,7 @@ mongoose
   });
 
 app.use("/api/auth", authRoutes);
+app.use("/api/stadium", stadiumRoutes);
 // app.use("/api/files", fileRoutes);
 
 app.get("/", (req, res) => {

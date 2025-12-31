@@ -5,7 +5,8 @@ const {
   login,
   logout
 } = require("../controllers/authController");
-const upload  = require("../middlewares/multerLocal");
+const upload = require("../middlewares/multerLocal");
+
 
 const router = express.Router();
 
