@@ -1,11 +1,10 @@
 // src/pages/player/PlayerDashboard.tsx
-import { useAuth } from "../../contexts/AuthContext";
-import RegularPlayerDashboard from "./RegularPlayerDashboard";
-import CaptainDashboard from "./CaptainDashboard";
+import { useAuth } from "../contexts/AuthContext";
+import RegularPlayerDashboard from "../pages/player/RegularPlayerDashboard";
+import CaptainDashboard from "../pages/player/CaptainDashboard";
 
 const PlayerDashboard = () => {
   const { user } = useAuth();
-  console.log("User in PlayerDashboard:", user); // Debug log
 
   // Check if user is a captain
   if (user?.playerType === "captain") {

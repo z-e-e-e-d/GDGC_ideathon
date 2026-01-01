@@ -1,3 +1,4 @@
+// App.tsx - CORRECT VERSION
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -16,8 +17,8 @@ import NotFound from "./pages/NotFound";
 import PlayerLayout from "./components/layouts/PlayerLayout";
 import OwnerLayout from "./components/layouts/OwnerLayout";
 
-// Player Pages
-import PlayerDashboard from "./pages/player/PlayerDashboard";
+// Player Pages - IMPORT THE WRAPPER DASHBOARD
+import PlayerDashboard from "./pages/player/PlayerDashboard"; // This is the wrapper
 import FindStadiums from "./pages/player/FindStadiums";
 import Teams from "./pages/player/Teams";
 import Bookings from "./pages/player/Bookings";
@@ -28,6 +29,12 @@ import ManageStadiums from "./pages/owner/ManageStadiums";
 import Timeline from "./pages/owner/Timeline";
 import Requests from "./pages/owner/Requests";
 import Analytics from "./pages/owner/Analytics";
+
+import CaptainOnlyRoute from "./utils/captainOnlyRoute";
+
+// Captain-specific pages (optional - for separate routes)
+import CaptainDashboard from "./pages/player/CaptainDashboard";
+import RegularPlayerDashboard from "./pages/player/RegularPlayerDashboard";
 
 const queryClient = new QueryClient();
 
@@ -53,11 +60,32 @@ const App = () => (
                 </ProtectedRoute>
               }
             >
-              <Route index element={<PlayerDashboard />} />
+              <Route index element={<PlayerDashboard />} />{" "}
+              {/* This uses the wrapper */}
               <Route path="stadiums" element={<FindStadiums />} />
               <Route path="teams" element={<Teams />} />
               <Route path="bookings" element={<Bookings />} />
-              <Route path="find-players" element={<div className="text-center py-12 text-muted-foreground">Find Players - Coming Soon</div>} />
+              <Route
+                path="find-players"
+                element={
+                  <div className="text-center py-12 text-muted-foreground">
+                    Find Players - Coming Soon
+                  </div>
+                }
+              />
+              {/* Optional: Separate routes for testing */}
+              <Route
+                path="captain-dashboard"
+                element={
+                  <CaptainOnlyRoute>
+                    <CaptainDashboard />
+                  </CaptainOnlyRoute>
+                }
+              />
+              <Route
+                path="regular-dashboard"
+                element={<RegularPlayerDashboard />}
+              />
             </Route>
 
             {/* Owner Routes */}

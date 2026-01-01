@@ -8,4 +8,5 @@ export interface User {
   role: UserRole;
   avatar?: string;
   age?: number; // optional for players
+  playerType?: PlayerSubType; // Add this for players
 }
