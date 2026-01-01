@@ -13,6 +13,7 @@ const stadiumRoutes = require("./routes/stadiumRoute");
 const adminRoutes = require("./routes/adminRoute");
 const teamsRoutes = require("./routes/teamRoute");
 const reservationRoutes = require("./routes/reservationRoutes");
+const ownerRoutes = require("./routes/ownerRoutes");
 // const fileRoutes = require("./routes/fileRoute");
 
 const app = express();
@@ -125,6 +126,7 @@ app.use("/api/stadium", stadiumRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/teams", teamsRoutes);
 app.use("/api/reservation", reservationRoutes);
+app.use("/api/owners", ownerRoutes);
 // app.use("/api/files", fileRoutes);
 
 app.get("/", (req, res) => {

@@ -20,29 +20,37 @@ const Login = () => {
 
   const from = (location.state as any)?.from?.pathname || "/";
 
+  // In Login.tsx handleSubmit function
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
-      await login(email, password); // Calls AuthService.login
+      await login(email, password);
       toast({
         title: "Welcome back!",
         description: "You've successfully logged in.",
       });
 
-      // Redirect based on user role
+      // Get user from localStorage after login
       const storedUser = localStorage.getItem("koralink_user");
       if (storedUser) {
         const user = JSON.parse(storedUser);
-        navigate(user.role === "player" ? "/player" : "/owner", {
-          replace: true,
-        });
+
+        // Redirect based on actual role
+        if (user.role === "player") {
+          navigate("/player", { replace: true });
+        } else if (user.role === "owner") {
+          navigate("/owner", { replace: true });
+        } else if (user.role === "admin") {
+          navigate("/admin", { replace: true }); // Add admin redirect
+        } else {
+          navigate("/", { replace: true });
+        }
       } else {
         navigate("/", { replace: true });
       }
     } catch (err: any) {
-      // Show backend message if exists
       toast({
         title: "Login failed",
         description: err.response?.data?.message || "Invalid email or password",
@@ -52,7 +60,6 @@ const Login = () => {
       setIsLoading(false);
     }
   };
-
   return (
     <div className="min-h-screen flex">
       {/* Left Side - Form */}

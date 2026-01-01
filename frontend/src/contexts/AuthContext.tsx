@@ -54,6 +54,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   // Login
+  // Login function in AuthContext.tsx
   const login = async (email: string, password: string) => {
     setIsLoading(true);
     try {
@@ -63,23 +64,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       // Debug: log the response
       console.log("Login response data:", data);
 
-      // Extract playerType from the response
-      // The backend might send role as "captain" or "regularPlayer"
-      // We need to map it to playerType
+      // Use the actual role from backend (type field)
+      const role = data.user.type as UserRole; // "player", "owner", or "admin"
+
       let playerType: PlayerSubType = "regularPlayer";
-      
       if (data.user.role === "captain") {
         playerType = "captain";
-      } else if (data.user.playerType) {
-        // If backend sends playerType directly
-        playerType = data.user.playerType;
       }
 
       const loggedInUser: User = {
         id: data.user.id,
         name: data.user.fullName,
-        role: "player", // Frontend role is always "player"
-        playerType: playerType,
+        role: role, // Use the actual role from backend
+        playerType: role === "player" ? playerType : undefined,
         age: data.user.age,
       };
 

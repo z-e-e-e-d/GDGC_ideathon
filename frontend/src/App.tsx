@@ -1,4 +1,4 @@
-// App.tsx - CORRECT VERSION
+// App.tsx - Updated with Admin routes
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -16,9 +16,10 @@ import NotFound from "./pages/NotFound";
 // Layouts
 import PlayerLayout from "./components/layouts/PlayerLayout";
 import OwnerLayout from "./components/layouts/OwnerLayout";
+import AdminLayout from "./components/layouts/AdminLayout"; // Create this
 
-// Player Pages - IMPORT THE WRAPPER DASHBOARD
-import PlayerDashboard from "./pages/player/PlayerDashboard"; // This is the wrapper
+// Player Pages
+import PlayerDashboard from "./pages/player/PlayerDashboard";
 import FindStadiums from "./pages/player/FindStadiums";
 import Teams from "./pages/player/Teams";
 import Bookings from "./pages/player/Bookings";
@@ -30,9 +31,16 @@ import Timeline from "./pages/owner/Timeline";
 import Requests from "./pages/owner/Requests";
 import Analytics from "./pages/owner/Analytics";
 
+// Admin Pages
+import AdminDashboard from "./pages/admin/AdminDashboard"; // Create this
+import AdminUsers from "./pages/admin/AdminUsers"; // Create this
+import AdminVerifications from "./pages/admin/AdminVerifications"; // Create this
+
 import CaptainOnlyRoute from "./utils/captainOnlyRoute";
 
-// Captain-specific pages (optional - for separate routes)
+import OwnersManagement from "./pages/admin/OwnersManagement";
+
+// Captain-specific pages
 import CaptainDashboard from "./pages/player/CaptainDashboard";
 import RegularPlayerDashboard from "./pages/player/RegularPlayerDashboard";
 
@@ -60,8 +68,7 @@ const App = () => (
                 </ProtectedRoute>
               }
             >
-              <Route index element={<PlayerDashboard />} />{" "}
-              {/* This uses the wrapper */}
+              <Route index element={<PlayerDashboard />} />
               <Route path="stadiums" element={<FindStadiums />} />
               <Route path="teams" element={<Teams />} />
               <Route path="bookings" element={<Bookings />} />
@@ -73,7 +80,6 @@ const App = () => (
                   </div>
                 }
               />
-              {/* Optional: Separate routes for testing */}
               <Route
                 path="captain-dashboard"
                 element={
@@ -102,6 +108,21 @@ const App = () => (
               <Route path="timeline" element={<Timeline />} />
               <Route path="requests" element={<Requests />} />
               <Route path="analytics" element={<Analytics />} />
+            </Route>
+
+            {/* Admin Routes */}
+            <Route
+              path="/admin"
+              element={
+                <ProtectedRoute allowedRoles={["admin"]}>
+                  <AdminLayout />
+                </ProtectedRoute>
+              }
+            >
+              <Route index element={<AdminDashboard />} />
+              <Route path="owners" element={<OwnersManagement />} />
+
+              {/* Add more admin routes as needed */}
             </Route>
 
             {/* Catch-all */}
