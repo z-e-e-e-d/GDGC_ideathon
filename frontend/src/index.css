@@ -1,2 +1,297 @@
-@import "tailwindcss";
-@import "tw-animate-css";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* KoraLink Design System - Football Stadium Booking Platform */
+/* Colors: Green, Black, White with game-inspired aesthetics */
+
+@import url('https://fonts.googleapis.com/css2?family=Russo+One&family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+@layer base {
+  :root {
+    /* Core Colors - Football Theme */
+    --background: 120 5% 4%;
+    --foreground: 0 0% 98%;
+
+    --card: 120 8% 8%;
+    --card-foreground: 0 0% 98%;
+
+    --popover: 120 8% 6%;
+    --popover-foreground: 0 0% 98%;
+
+    /* Primary - Vibrant Green (Pitch) */
+    --primary: 142 76% 36%;
+    --primary-foreground: 0 0% 100%;
+
+    /* Secondary - Dark Green */
+    --secondary: 142 40% 15%;
+    --secondary-foreground: 0 0% 98%;
+
+    --muted: 120 5% 15%;
+    --muted-foreground: 120 5% 60%;
+
+    /* Accent - Bright Green Glow */
+    --accent: 142 70% 45%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 142 20% 18%;
+    --input: 142 15% 12%;
+    --ring: 142 76% 36%;
+
+    --radius: 0.75rem;
+
+    /* Custom KoraLink Variables */
+    --pitch-green: 142 76% 36%;
+    --pitch-dark: 142 50% 20%;
+    --pitch-light: 142 60% 50%;
+    --neon-green: 142 100% 50%;
+    --stadium-black: 0 0% 5%;
+    --card-gold: 45 100% 50%;
+    --card-silver: 0 0% 75%;
+    --card-bronze: 30 60% 45%;
+
+    /* Gradients */
+    --gradient-pitch: linear-gradient(135deg, hsl(142 76% 36%) 0%, hsl(142 50% 25%) 100%);
+    --gradient-stadium: linear-gradient(180deg, hsl(120 5% 8%) 0%, hsl(120 5% 4%) 100%);
+    --gradient-card: linear-gradient(145deg, hsl(142 40% 15%) 0%, hsl(120 5% 8%) 100%);
+    --gradient-hero: linear-gradient(135deg, hsl(142 76% 36% / 0.2) 0%, transparent 50%);
+    --gradient-glow: radial-gradient(circle at center, hsl(142 100% 50% / 0.3) 0%, transparent 70%);
+
+    /* Shadows */
+    --shadow-card: 0 4px 20px -4px hsl(142 76% 36% / 0.3);
+    --shadow-button: 0 0 20px hsl(142 76% 36% / 0.4);
+    --shadow-glow: 0 0 40px hsl(142 100% 50% / 0.2);
+
+    --sidebar-background: 120 5% 6%;
+    --sidebar-foreground: 0 0% 98%;
+    --sidebar-primary: 142 76% 36%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 142 40% 15%;
+    --sidebar-accent-foreground: 0 0% 98%;
+    --sidebar-border: 142 20% 18%;
+    --sidebar-ring: 142 76% 36%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Inter', sans-serif;
+  }
+
+  h1, h2, h3, .font-display {
+    font-family: 'Russo One', sans-serif;
+  }
+}
+
+@layer components {
+  /* Button Variants */
+  .btn-primary {
+    @apply bg-primary text-primary-foreground hover:bg-primary/90 transition-all duration-300;
+    box-shadow: var(--shadow-button);
+  }
+
+  .btn-primary:hover {
+    box-shadow: 0 0 30px hsl(142 76% 36% / 0.6);
+    transform: translateY(-2px);
+  }
+
+  .btn-outline-glow {
+    @apply border-2 border-primary text-primary bg-transparent hover:bg-primary hover:text-primary-foreground transition-all duration-300;
+  }
+
+  .btn-outline-glow:hover {
+    box-shadow: var(--shadow-button);
+  }
+
+  /* Card Styles */
+  .card-stadium {
+    @apply bg-card border border-border rounded-xl overflow-hidden transition-all duration-500;
+    background: var(--gradient-card);
+  }
+
+  .card-stadium:hover {
+    @apply border-primary/50;
+    box-shadow: var(--shadow-card);
+    transform: translateY(-4px);
+  }
+
+  /* Player Card (FIFA-style) */
+  .player-card {
+    @apply relative overflow-hidden rounded-xl;
+    background: linear-gradient(145deg, hsl(142 60% 25%) 0%, hsl(142 40% 15%) 50%, hsl(120 5% 8%) 100%);
+    border: 2px solid hsl(142 76% 36% / 0.5);
+  }
+
+  .player-card-gold {
+    background: linear-gradient(145deg, hsl(45 100% 40%) 0%, hsl(35 80% 30%) 50%, hsl(30 60% 20%) 100%);
+    border-color: hsl(45 100% 50% / 0.7);
+  }
+
+  .player-card-silver {
+    background: linear-gradient(145deg, hsl(0 0% 60%) 0%, hsl(0 0% 40%) 50%, hsl(0 0% 25%) 100%);
+    border-color: hsl(0 0% 75% / 0.7);
+  }
+
+  /* Glass Effect */
+  .glass {
+    @apply backdrop-blur-xl bg-white/5 border border-white/10;
+  }
+
+  .glass-dark {
+    @apply backdrop-blur-xl bg-black/40 border border-white/5;
+  }
+
+  /* Pitch Pattern */
+  .pitch-pattern {
+    background-image: 
+      linear-gradient(90deg, hsl(142 76% 36% / 0.1) 1px, transparent 1px),
+      linear-gradient(hsl(142 76% 36% / 0.1) 1px, transparent 1px);
+    background-size: 50px 50px;
+  }
+
+  /* Glow Effects */
+  .glow-green {
+    box-shadow: var(--shadow-glow);
+  }
+
+  .text-glow {
+    text-shadow: 0 0 20px hsl(142 100% 50% / 0.5);
+  }
+
+  /* Navigation */
+  .nav-link {
+    @apply relative text-muted-foreground hover:text-foreground transition-colors duration-300;
+  }
+
+  .nav-link::after {
+    content: '';
+    @apply absolute bottom-0 left-0 w-0 h-0.5 bg-primary transition-all duration-300;
+  }
+
+  .nav-link:hover::after,
+  .nav-link.active::after {
+    @apply w-full;
+  }
+
+  /* Input Styles */
+  .input-stadium {
+    @apply bg-input border-border focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-300;
+  }
+
+  /* Timeline Slot */
+  .time-slot {
+    @apply rounded-lg transition-all duration-300 cursor-pointer;
+  }
+
+  .time-slot-available {
+    @apply bg-primary/20 border border-primary/30 hover:bg-primary/30 hover:border-primary;
+  }
+
+  .time-slot-booked {
+    @apply bg-destructive/20 border border-destructive/30;
+  }
+
+  .time-slot-locked {
+    @apply bg-muted border border-border opacity-50;
+  }
+
+  /* Chat Bubble */
+  .chat-bubble {
+    @apply rounded-2xl px-4 py-2 max-w-xs;
+  }
+
+  .chat-bubble-sent {
+    @apply bg-primary text-primary-foreground rounded-br-sm;
+  }
+
+  .chat-bubble-received {
+    @apply bg-secondary text-secondary-foreground rounded-bl-sm;
+  }
+}
+
+@layer utilities {
+  /* Animations */
+  .animate-float {
+    animation: float 6s ease-in-out infinite;
+  }
+
+  .animate-pulse-glow {
+    animation: pulse-glow 2s ease-in-out infinite;
+  }
+
+  .animate-slide-up {
+    animation: slide-up 0.6s ease-out forwards;
+  }
+
+  .animate-slide-in-right {
+    animation: slide-in-right 0.5s ease-out forwards;
+  }
+
+  .animate-scale-in {
+    animation: scale-in 0.4s ease-out forwards;
+  }
+
+  .animate-lineup-reveal {
+    animation: lineup-reveal 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  }
+
+  .animate-card-flip {
+    animation: card-flip 0.6s ease-out forwards;
+  }
+
+  @keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-20px); }
+  }
+
+  @keyframes pulse-glow {
+    0%, 100% { box-shadow: 0 0 20px hsl(142 76% 36% / 0.3); }
+    50% { box-shadow: 0 0 40px hsl(142 76% 36% / 0.6); }
+  }
+
+  @keyframes slide-up {
+    from { opacity: 0; transform: translateY(30px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes slide-in-right {
+    from { opacity: 0; transform: translateX(30px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+
+  @keyframes scale-in {
+    from { opacity: 0; transform: scale(0.9); }
+    to { opacity: 1; transform: scale(1); }
+  }
+
+  @keyframes lineup-reveal {
+    0% { opacity: 0; transform: translateY(50px) scale(0.8); }
+    60% { transform: translateY(-10px) scale(1.05); }
+    100% { opacity: 1; transform: translateY(0) scale(1); }
+  }
+
+  @keyframes card-flip {
+    0% { transform: rotateY(90deg); opacity: 0; }
+    100% { transform: rotateY(0); opacity: 1; }
+  }
+
+  /* Delay utilities for staggered animations */
+  .delay-100 { animation-delay: 100ms; }
+  .delay-200 { animation-delay: 200ms; }
+  .delay-300 { animation-delay: 300ms; }
+  .delay-400 { animation-delay: 400ms; }
+  .delay-500 { animation-delay: 500ms; }
+  .delay-600 { animation-delay: 600ms; }
+  .delay-700 { animation-delay: 700ms; }
+  .delay-800 { animation-delay: 800ms; }
+  .delay-900 { animation-delay: 900ms; }
+  .delay-1000 { animation-delay: 1000ms; }
+}

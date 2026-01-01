@@ -1,0 +1,244 @@
+import { useState, useEffect } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Eye, EyeOff, Mail, Lock, User, Loader2, Users, Building2 } from "lucide-react";
+import { useAuth, UserRole } from "../contexts/AuthContext";
+import { Button } from "../components/ui/button";
+import { Input } from "../components/ui/input";
+import { Label } from "../components/ui/label";
+import { useToast } from "../hooks/use-toast";
+
+const Register = () => {
+  const [searchParams] = useSearchParams();
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [role, setRole] = useState<UserRole>("player");
+  const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  
+  const { register } = useAuth();
+  const navigate = useNavigate();
+  const { toast } = useToast();
+
+  useEffect(() => {
+    const roleParam = searchParams.get("role");
+    if (roleParam === "player" || roleParam === "owner") {
+      setRole(roleParam);
+    }
+  }, [searchParams]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (password !== confirmPassword) {
+      toast({
+        title: "Passwords don't match",
+        description: "Please make sure your passwords match.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (password.length < 6) {
+      toast({
+        title: "Password too short",
+        description: "Password must be at least 6 characters long.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      await register(email, password, name, role);
+      toast({
+        title: "Account created!",
+        description: "Welcome to KoraLink. Let's get started!",
+      });
+      navigate(role === "player" ? "/player" : "/owner", { replace: true });
+    } catch (error: any) {
+      toast({
+        title: "Registration failed",
+        description: error.message || "Something went wrong. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen flex">
+      {/* Left Side - Decorative */}
+      <div className="hidden lg:flex flex-1 bg-gradient-pitch items-center justify-center relative overflow-hidden">
+        <div className="absolute inset-0 pitch-pattern opacity-20" />
+        <div className="absolute top-1/4 right-1/4 w-64 h-64 bg-white/10 rounded-full blur-3xl" />
+        <div className="absolute bottom-1/4 left-1/4 w-48 h-48 bg-white/5 rounded-full blur-2xl" />
+        
+        <div className="relative z-10 text-center p-12">
+          <h2 className="font-display text-4xl text-white mb-4">
+            Join the Game
+          </h2>
+          <p className="text-white/80 text-lg max-w-md">
+            Create your account and start booking stadiums or managing your pitch today.
+          </p>
+        </div>
+      </div>
+
+      {/* Right Side - Form */}
+      <div className="flex-1 flex items-center justify-center p-8 overflow-y-auto">
+        <div className="w-full max-w-md py-8">
+          {/* Logo */}
+          <Link to="/" className="flex items-center gap-2 mb-8">
+            <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center">
+              <span className="text-primary-foreground font-display text-lg">K</span>
+            </div>
+            <span className="font-display text-xl text-foreground">
+              Kora<span className="text-primary">Link</span>
+            </span>
+          </Link>
+
+          <h1 className="font-display text-3xl text-foreground mb-2">Create Account</h1>
+          <p className="text-muted-foreground mb-8">
+            Join KoraLink and start your football journey
+          </p>
+
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Role Selection */}
+            <div className="space-y-2">
+              <Label>I am a</Label>
+              <div className="grid grid-cols-2 gap-4">
+                <button
+                  type="button"
+                  onClick={() => setRole("player")}
+                  className={`p-4 rounded-xl border-2 transition-all flex flex-col items-center gap-2 ${
+                    role === "player"
+                      ? "border-primary bg-primary/10"
+                      : "border-border bg-card hover:border-primary/50"
+                  }`}
+                >
+                  <Users className={`w-8 h-8 ${role === "player" ? "text-primary" : "text-muted-foreground"}`} />
+                  <span className={`font-medium ${role === "player" ? "text-primary" : "text-foreground"}`}>
+                    Player
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRole("owner")}
+                  className={`p-4 rounded-xl border-2 transition-all flex flex-col items-center gap-2 ${
+                    role === "owner"
+                      ? "border-primary bg-primary/10"
+                      : "border-border bg-card hover:border-primary/50"
+                  }`}
+                >
+                  <Building2 className={`w-8 h-8 ${role === "owner" ? "text-primary" : "text-muted-foreground"}`} />
+                  <span className={`font-medium ${role === "owner" ? "text-primary" : "text-foreground"}`}>
+                    Stadium Owner
+                  </span>
+                </button>
+              </div>
+            </div>
+
+            {/* Name */}
+            <div className="space-y-2">
+              <Label htmlFor="name">Full Name</Label>
+              <div className="relative">
+                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                <Input
+                  id="name"
+                  type="text"
+                  placeholder="Enter your name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="pl-10 bg-input border-border"
+                  required
+                />
+              </div>
+            </div>
+
+            {/* Email */}
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="Enter your email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="pl-10 bg-input border-border"
+                  required
+                />
+              </div>
+            </div>
+
+            {/* Password */}
+            <div className="space-y-2">
+              <Label htmlFor="password">Password</Label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                <Input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Create a password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="pl-10 pr-10 bg-input border-border"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                </button>
+              </div>
+            </div>
+
+            {/* Confirm Password */}
+            <div className="space-y-2">
+              <Label htmlFor="confirmPassword">Confirm Password</Label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                <Input
+                  id="confirmPassword"
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Confirm your password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="pl-10 bg-input border-border"
+                  required
+                />
+              </div>
+            </div>
+
+            {/* Submit */}
+            <Button type="submit" className="w-full btn-primary" disabled={isLoading}>
+              {isLoading ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Creating account...
+                </>
+              ) : (
+                "Create Account"
+              )}
+            </Button>
+          </form>
+
+          <p className="text-center text-muted-foreground mt-6">
+            Already have an account?{" "}
+            <Link to="/login" className="text-primary hover:underline font-medium">
+              Sign in
+            </Link>
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default Register;
