@@ -87,37 +87,47 @@ const playerSignup = async (req, res) => {
 const login = async (req, res) => {
   try {
     const { email, password } = req.body;
+    console.log("Login attempt:", { email });
 
     let user = await Admin.findOne({ email });
     let userType = "admin";
+    console.log("Checked Admin:", user ? "Found" : "Not found");
 
     if (!user) {
       user = await Owner.findOne({ email });
       userType = "owner";
+      console.log("Checked Owner:", user ? "Found" : "Not found");
     }
 
     if (!user) {
       user = await Player.findOne({ email });
       userType = "player";
+      console.log("Checked Player:", user ? "Found" : "Not found");
     }
 
     if (!user) {
+      console.log("User not found in any collection");
       return res.status(404).json({ message: "User not found" });
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
+    console.log("Password match:", isMatch);
+
     if (!isMatch) {
+      console.log("Invalid password for user:", email);
       return res.status(401).json({ message: "Invalid credentials" });
     }
 
     // 🚨 Owner not approved
     if (userType === "owner" && user.verification?.status !== "approved") {
+      console.log("Owner login attempt pending approval:", email);
       return res.status(403).json({
         message: "Owner account pending admin approval",
       });
     }
 
-    const token = generateToken(user);
+    const token = generateToken(user, userType);
+    console.log("Login successful:", { email, userType, token });
 
     res.json({
       token,
@@ -129,9 +139,11 @@ const login = async (req, res) => {
       },
     });
   } catch (err) {
+    console.error("Login error:", err);
     res.status(500).json({ message: err.message });
   }
 };
+
 
 // controllers/authController.js
 const logout = async (req, res) => {

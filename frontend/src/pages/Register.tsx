@@ -1,7 +1,17 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { Eye, EyeOff, Mail, Lock, User, Loader2, Users, Building2 } from "lucide-react";
-import { useAuth, UserRole } from "../contexts/AuthContext";
+import {
+  Eye,
+  EyeOff,
+  Mail,
+  Lock,
+  User,
+  Loader2,
+  Users,
+  Building2,
+} from "lucide-react";
+import { useAuth } from "../contexts/AuthContext";
+import { UserRole } from "../contexts/AuthContextTypes";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
@@ -16,8 +26,8 @@ const Register = () => {
   const [role, setRole] = useState<UserRole>("player");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  
-  const { register } = useAuth();
+
+  const { registerPlayer, registerOwner } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -30,7 +40,7 @@ const Register = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (password !== confirmPassword) {
       toast({
         title: "Passwords don't match",
@@ -52,11 +62,31 @@ const Register = () => {
     setIsLoading(true);
 
     try {
-      await register(email, password, name, role);
+      if (role === "player") {
+        // Map "player" to "regularPlayer" for backend
+        const backendRole: "regularPlayer" = "regularPlayer";
+        await registerPlayer(
+          email,
+          password,
+          name,
+          backendRole,
+          "DEF",
+          "beginner",
+          18
+        );
+      } else {
+        const formData = new FormData();
+        formData.append("fullName", name);
+        formData.append("email", email);
+        formData.append("password", password);
+        await registerOwner(formData);
+      }
+
       toast({
         title: "Account created!",
         description: "Welcome to KoraLink. Let's get started!",
       });
+
       navigate(role === "player" ? "/player" : "/owner", { replace: true });
     } catch (error: any) {
       toast({
@@ -71,18 +101,18 @@ const Register = () => {
 
   return (
     <div className="min-h-screen flex">
-      {/* Left Side - Decorative */}
+      {/* Left Side */}
       <div className="hidden lg:flex flex-1 bg-gradient-pitch items-center justify-center relative overflow-hidden">
         <div className="absolute inset-0 pitch-pattern opacity-20" />
         <div className="absolute top-1/4 right-1/4 w-64 h-64 bg-white/10 rounded-full blur-3xl" />
         <div className="absolute bottom-1/4 left-1/4 w-48 h-48 bg-white/5 rounded-full blur-2xl" />
-        
         <div className="relative z-10 text-center p-12">
           <h2 className="font-display text-4xl text-white mb-4">
             Join the Game
           </h2>
           <p className="text-white/80 text-lg max-w-md">
-            Create your account and start booking stadiums or managing your pitch today.
+            Create your account and start booking stadiums or managing your
+            pitch today.
           </p>
         </div>
       </div>
@@ -93,14 +123,18 @@ const Register = () => {
           {/* Logo */}
           <Link to="/" className="flex items-center gap-2 mb-8">
             <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center">
-              <span className="text-primary-foreground font-display text-lg">K</span>
+              <span className="text-primary-foreground font-display text-lg">
+                K
+              </span>
             </div>
             <span className="font-display text-xl text-foreground">
               Kora<span className="text-primary">Link</span>
             </span>
           </Link>
 
-          <h1 className="font-display text-3xl text-foreground mb-2">Create Account</h1>
+          <h1 className="font-display text-3xl text-foreground mb-2">
+            Create Account
+          </h1>
           <p className="text-muted-foreground mb-8">
             Join KoraLink and start your football journey
           </p>
@@ -119,11 +153,22 @@ const Register = () => {
                       : "border-border bg-card hover:border-primary/50"
                   }`}
                 >
-                  <Users className={`w-8 h-8 ${role === "player" ? "text-primary" : "text-muted-foreground"}`} />
-                  <span className={`font-medium ${role === "player" ? "text-primary" : "text-foreground"}`}>
+                  <Users
+                    className={`w-8 h-8 ${
+                      role === "player"
+                        ? "text-primary"
+                        : "text-muted-foreground"
+                    }`}
+                  />
+                  <span
+                    className={`font-medium ${
+                      role === "player" ? "text-primary" : "text-foreground"
+                    }`}
+                  >
                     Player
                   </span>
                 </button>
+
                 <button
                   type="button"
                   onClick={() => setRole("owner")}
@@ -133,15 +178,25 @@ const Register = () => {
                       : "border-border bg-card hover:border-primary/50"
                   }`}
                 >
-                  <Building2 className={`w-8 h-8 ${role === "owner" ? "text-primary" : "text-muted-foreground"}`} />
-                  <span className={`font-medium ${role === "owner" ? "text-primary" : "text-foreground"}`}>
+                  <Building2
+                    className={`w-8 h-8 ${
+                      role === "owner"
+                        ? "text-primary"
+                        : "text-muted-foreground"
+                    }`}
+                  />
+                  <span
+                    className={`font-medium ${
+                      role === "owner" ? "text-primary" : "text-foreground"
+                    }`}
+                  >
                     Stadium Owner
                   </span>
                 </button>
               </div>
             </div>
 
-            {/* Name */}
+            {/* Full Name */}
             <div className="space-y-2">
               <Label htmlFor="name">Full Name</Label>
               <div className="relative">
@@ -194,7 +249,11 @@ const Register = () => {
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                 >
-                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  {showPassword ? (
+                    <EyeOff className="w-5 h-5" />
+                  ) : (
+                    <Eye className="w-5 h-5" />
+                  )}
                 </button>
               </div>
             </div>
@@ -217,7 +276,11 @@ const Register = () => {
             </div>
 
             {/* Submit */}
-            <Button type="submit" className="w-full btn-primary" disabled={isLoading}>
+            <Button
+              type="submit"
+              className="w-full btn-primary"
+              disabled={isLoading}
+            >
               {isLoading ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -231,7 +294,10 @@ const Register = () => {
 
           <p className="text-center text-muted-foreground mt-6">
             Already have an account?{" "}
-            <Link to="/login" className="text-primary hover:underline font-medium">
+            <Link
+              to="/login"
+              className="text-primary hover:underline font-medium"
+            >
               Sign in
             </Link>
           </p>
