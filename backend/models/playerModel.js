@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+
 const PlayerSchema = new mongoose.Schema({
   fullName: { type: String, required: true },
 
@@ -16,6 +17,12 @@ const PlayerSchema = new mongoose.Schema({
   skillLevel: {
     type: String,
     enum: ["beginner", "intermediate", "advanced"],
+  },
+
+  age: {
+    type: Number,
+    min: 5,  // optional: minimum age
+    max: 100, // optional: maximum age
   },
 
   createdAt: { type: Date, default: Date.now },

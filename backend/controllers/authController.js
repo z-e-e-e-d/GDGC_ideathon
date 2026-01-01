@@ -45,7 +45,7 @@ const ownerSignup = async (req, res) => {
 // ===============================
 const playerSignup = async (req, res) => {
   try {
-    const { fullName, email, password, role, position, skillLevel } = req.body;
+    const { fullName, email, password, role, position, skillLevel, age } = req.body;
 
     const existingPlayer = await Player.findOne({ email });
     if (existingPlayer) {
@@ -61,6 +61,7 @@ const playerSignup = async (req, res) => {
       role: role || "regularPlayer",
       position,
       skillLevel,
+      age, // ✅ add this line
     });
 
     const token = generateToken(player);
@@ -71,12 +72,14 @@ const playerSignup = async (req, res) => {
         id: player._id,
         role: player.role,
         fullName: player.fullName,
+        age: player.age, // ✅ include age in the response if you want
       },
     });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 };
+
 
 // ===============================
 // LOGIN (ADMIN / OWNER / PLAYER)
