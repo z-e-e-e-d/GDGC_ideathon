@@ -55,6 +55,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   // Login
   // Login function in AuthContext.tsx
+  // In AuthContext.tsx - Update the login function
   const login = async (email: string, password: string) => {
     setIsLoading(true);
     try {
@@ -63,24 +64,42 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       // Debug: log the response
       console.log("Login response data:", data);
+      console.log("User object from backend:", data.user);
+      console.log("Backend user.role:", data.user.role); // "captain" for captain
+      console.log("Backend user.type:", data.user.type); // "player" for all players
 
-      // Use the actual role from backend (type field)
-      const role = data.user.type as UserRole; // "player", "owner", or "admin"
+      // Backend returns:
+      // - type: "player", "owner", or "admin" (main category)
+      // - role: "captain", "regularPlayer", "owner", or "admin" (specific role)
 
-      let playerType: PlayerSubType = "regularPlayer";
-      if (data.user.role === "captain") {
-        playerType = "captain";
+      // Convert to frontend format:
+      const userData = data.user;
+      let frontendRole: UserRole;
+      let playerType: PlayerSubType | undefined;
+
+      if (userData.type === "player") {
+        // For players, main role is "player"
+        frontendRole = "player";
+        // Player type is either "captain" or "regularPlayer"
+        if (userData.role === "captain") {
+          playerType = "captain";
+        } else {
+          playerType = "regularPlayer";
+        }
+      } else {
+        // For owner or admin, use the type as role
+        frontendRole = userData.type as UserRole;
       }
 
       const loggedInUser: User = {
-        id: data.user.id,
-        name: data.user.fullName,
-        role: role, // Use the actual role from backend
-        playerType: role === "player" ? playerType : undefined,
-        age: data.user.age,
+        id: userData.id,
+        name: userData.fullName,
+        role: frontendRole, // "player", "owner", or "admin"
+        playerType: playerType, // "captain" or "regularPlayer" (only for players)
+        age: userData.age,
       };
 
-      console.log("Setting user with:", loggedInUser);
+      console.log("Frontend user object:", loggedInUser);
 
       localStorage.setItem("koralink_token", data.token);
       localStorage.setItem("koralink_user", JSON.stringify(loggedInUser));
@@ -92,7 +111,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setIsLoading(false);
     }
   };
-
   // Register player
   const registerPlayer = async (
     email: string,

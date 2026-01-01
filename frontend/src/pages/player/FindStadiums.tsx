@@ -1,5 +1,21 @@
 import { useState, useEffect } from "react";
-import { MapPin, Search, Filter, SlidersHorizontal, X, Loader2, Users, Star, Clock } from "lucide-react";
+import {
+  MapPin,
+  Search,
+  Filter,
+  SlidersHorizontal,
+  X,
+  Loader2,
+  Users,
+  Star,
+  Clock,
+  Calendar,
+  Clock as ClockIcon,
+  User,
+  CheckCircle,
+  XCircle,
+  AlertCircle,
+} from "lucide-react";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { StadiumCardProps } from "../../components/StadiumCard";
@@ -20,19 +36,44 @@ import {
 import { Slider } from "../../components/ui/slider";
 import { useToast } from "../../hooks/use-toast";
 import * as StadiumService from "../../services/stadium";
+import * as ReservationService from "../../services/reservation";
 import { Badge } from "../../components/ui/badge";
+import { useAuth } from "../../contexts/AuthContext";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "../../components/ui/dialog";
+import { Label } from "../../components/ui/label";
+import { Textarea } from "../../components/ui/textarea";
 
 const FindStadiums = () => {
   const [stadiums, setStadiums] = useState<StadiumService.Stadium[]>([]);
-  const [filteredStadiums, setFilteredStadiums] = useState<StadiumService.Stadium[]>([]);
+  const [filteredStadiums, setFilteredStadiums] = useState<
+    StadiumService.Stadium[]
+  >([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [priceRange, setPriceRange] = useState([1000, 10000]);
   const [selectedSize, setSelectedSize] = useState<string>("all");
   const [sortBy, setSortBy] = useState("popular");
   const [showFilters, setShowFilters] = useState(false);
+  const [bookingStadium, setBookingStadium] =
+    useState<StadiumService.Stadium | null>(null);
+  const [bookingDialogOpen, setBookingDialogOpen] = useState(false);
+  const [isBooking, setIsBooking] = useState(false);
+  const [bookingData, setBookingData] = useState({
+    session: "",
+    weekday: 0,
+    notes: "",
+  });
+  const [availableSessions, setAvailableSessions] = useState<string[]>([]);
 
   const { toast } = useToast();
+  const { user } = useAuth();
 
   useEffect(() => {
     fetchStadiums();
@@ -47,12 +88,11 @@ const FindStadiums = () => {
       setIsLoading(true);
       const response = await StadiumService.getAllStadiums();
       setStadiums(response.stadiums);
-      
-      // Set initial price range based on actual data
+
       if (response.stadiums.length > 0) {
         const prices = response.stadiums
-          .filter(s => s.pricePerHour)
-          .map(s => s.pricePerHour || 0);
+          .filter((s) => s.pricePerHour)
+          .map((s) => s.pricePerHour || 0);
         if (prices.length > 0) {
           const minPrice = Math.min(...prices);
           const maxPrice = Math.max(...prices);
@@ -73,23 +113,26 @@ const FindStadiums = () => {
   const filterAndSortStadiums = () => {
     let filtered = [...stadiums];
 
-    // Filter by search query
     if (searchQuery) {
       filtered = filtered.filter((stadium) => {
-        const nameMatch = stadium.name.toLowerCase().includes(searchQuery.toLowerCase());
-        const addressMatch = stadium.location?.address?.toLowerCase().includes(searchQuery.toLowerCase());
-        const ownerMatch = stadium.owner?.fullName?.toLowerCase().includes(searchQuery.toLowerCase());
+        const nameMatch = stadium.name
+          .toLowerCase()
+          .includes(searchQuery.toLowerCase());
+        const addressMatch = stadium.location?.address
+          ?.toLowerCase()
+          .includes(searchQuery.toLowerCase());
+        const ownerMatch = stadium.owner?.fullName
+          ?.toLowerCase()
+          .includes(searchQuery.toLowerCase());
         return nameMatch || addressMatch || ownerMatch;
       });
     }
 
-    // Filter by price range
     filtered = filtered.filter((stadium) => {
       const price = stadium.pricePerHour || 0;
       return price >= priceRange[0] && price <= priceRange[1];
     });
 
-    // Filter by size (maxPlayers)
     if (selectedSize !== "all") {
       filtered = filtered.filter((stadium) => {
         const size = stadium.maxPlayers || 0;
@@ -97,7 +140,6 @@ const FindStadiums = () => {
       });
     }
 
-    // Sort stadiums
     filtered.sort((a, b) => {
       switch (sortBy) {
         case "price-low":
@@ -105,8 +147,9 @@ const FindStadiums = () => {
         case "price-high":
           return (b.pricePerHour || 0) - (a.pricePerHour || 0);
         case "popular":
-          // For now, sort by creation date (newest first)
-          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+          return (
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          );
         case "name":
           return a.name.localeCompare(b.name);
         default:
@@ -117,26 +160,118 @@ const FindStadiums = () => {
     setFilteredStadiums(filtered);
   };
 
-  const convertToCardProps = (stadium: StadiumService.Stadium): StadiumCardProps => {
-    // Generate a mock rating for now (you might want to add ratings to your Stadium model)
-    const rating = 4.0 + (Math.random() * 1.5); // Random between 4.0-5.5
-    
-    // Mock distance calculation (you can implement real distance later)
-    const distances = ["1.2 km", "2.5 km", "3.8 km", "4.1 km", "5.2 km", "8.5 km"];
-    const distance = distances[Math.floor(Math.random() * distances.length)];
-    
-    // Calculate available slots (mock - you might want to implement actual booking logic)
-    const availableSlots = Math.floor(Math.random() * 8) + 1;
-    
-    // Determine size based on maxPlayers
-    let size = 5; // Default 5v5
-    if (stadium.maxPlayers >= 18) size = 11; // 11v11
-    else if (stadium.maxPlayers >= 12) size = 7; // 7v7
+  const handleBookNow = async (stadium: StadiumService.Stadium) => {
+    if (!user) {
+      toast({
+        title: "Login required",
+        description: "Please login to book a stadium",
+        variant: "destructive",
+      });
+      return;
+    }
 
-    // Get primary image
-    const imageUrl = stadium.images && stadium.images.length > 0 
-      ? StadiumService.getStadiumImageUrl(stadium.images[0])
-      : undefined;
+    // Check if user is a player (role === "player")
+    if (user.role !== "player") {
+      toast({
+        title: "Player required",
+        description: "Only players can book stadiums",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Check if player is a captain (playerType === "captain")
+    if (user.playerType !== "captain") {
+      toast({
+        title: "Captain required",
+        description: "Only team captains can book stadiums",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setBookingStadium(stadium);
+    setBookingData({
+      session: "",
+      weekday: 0,
+      notes: "",
+    });
+    setAvailableSessions(["morning", "afternoon", "evening", "night"]);
+    setBookingDialogOpen(true);
+  };
+
+  const handleBookingSubmit = async () => {
+    if (
+      !bookingStadium ||
+      !bookingData.session ||
+      bookingData.weekday === undefined
+    ) {
+      toast({
+        title: "Missing information",
+        description: "Please select a day and time slot",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setIsBooking(true);
+
+      const reservationData: ReservationService.CreateReservationRequest = {
+        stadiumId: bookingStadium._id,
+        session: bookingData.session,
+        weekday: bookingData.weekday,
+        notes: bookingData.notes,
+      };
+
+      await ReservationService.createReservation(reservationData);
+
+      toast({
+        title: "Reservation created!",
+        description: "Your stadium reservation request has been submitted",
+      });
+
+      setBookingDialogOpen(false);
+      setBookingStadium(null);
+      setBookingData({
+        session: "",
+        weekday: 0,
+        notes: "",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Booking failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsBooking(false);
+    }
+  };
+
+  const convertToCardProps = (
+    stadium: StadiumService.Stadium
+  ): StadiumCardProps => {
+    const rating = 4.0 + Math.random() * 1.5;
+    const distances = [
+      "1.2 km",
+      "2.5 km",
+      "3.8 km",
+      "4.1 km",
+      "5.2 km",
+      "8.5 km",
+    ];
+    const distance = distances[Math.floor(Math.random() * distances.length)];
+    const availableSlots = Math.floor(Math.random() * 8) + 1;
+
+    let size = 5;
+    if (stadium.maxPlayers >= 18) size = 11;
+    else if (stadium.maxPlayers >= 12) size = 7;
+
+    const imageUrl =
+      stadium.images && stadium.images.length > 0
+        ? StadiumService.getStadiumImageUrl(stadium.images[0])
+        : undefined;
 
     return {
       id: stadium._id,
@@ -155,7 +290,6 @@ const FindStadiums = () => {
 
   const FiltersContent = () => (
     <div className="space-y-6">
-      {/* Price Range */}
       <div>
         <label className="text-sm font-medium text-foreground mb-4 block">
           Price Range (DZD/hr)
@@ -176,7 +310,6 @@ const FindStadiums = () => {
         </div>
       </div>
 
-      {/* Stadium Size */}
       <div>
         <label className="text-sm font-medium text-foreground mb-2 block">
           Stadium Size
@@ -194,7 +327,6 @@ const FindStadiums = () => {
         </Select>
       </div>
 
-      {/* Sort By */}
       <div>
         <label className="text-sm font-medium text-foreground mb-2 block">
           Sort By
@@ -216,11 +348,10 @@ const FindStadiums = () => {
         variant="outline"
         className="w-full border-border"
         onClick={() => {
-          // Reset to defaults based on actual data
           if (stadiums.length > 0) {
             const prices = stadiums
-              .filter(s => s.pricePerHour)
-              .map(s => s.pricePerHour || 0);
+              .filter((s) => s.pricePerHour)
+              .map((s) => s.pricePerHour || 0);
             if (prices.length > 0) {
               const minPrice = Math.min(...prices);
               const maxPrice = Math.max(...prices);
@@ -250,7 +381,9 @@ const FindStadiums = () => {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="font-display text-2xl md:text-3xl text-foreground">Find Stadiums</h1>
+          <h1 className="font-display text-2xl md:text-3xl text-foreground">
+            Find Stadiums
+          </h1>
           <p className="text-muted-foreground mt-1">
             Discover nearby pitches and book your slot
           </p>
@@ -269,7 +402,6 @@ const FindStadiums = () => {
 
       {/* Search and Filters */}
       <div className="flex flex-col md:flex-row gap-4">
-        {/* Search */}
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
           <Input
@@ -280,7 +412,6 @@ const FindStadiums = () => {
           />
         </div>
 
-        {/* Desktop Filters */}
         <div className="hidden md:flex gap-4">
           <Select value={selectedSize} onValueChange={setSelectedSize}>
             <SelectTrigger className="w-40 bg-input border-border">
@@ -324,7 +455,6 @@ const FindStadiums = () => {
           </Sheet>
         </div>
 
-        {/* Mobile Filter Button */}
         <Sheet open={showFilters} onOpenChange={setShowFilters}>
           <SheetTrigger asChild>
             <Button variant="outline" className="md:hidden border-border gap-2">
@@ -332,10 +462,17 @@ const FindStadiums = () => {
               Filters
             </Button>
           </SheetTrigger>
-          <SheetContent side="bottom" className="bg-card border-border rounded-t-3xl h-[80vh]">
+          <SheetContent
+            side="bottom"
+            className="bg-card border-border rounded-t-3xl h-[80vh]"
+          >
             <SheetHeader className="flex-row items-center justify-between">
               <SheetTitle className="text-foreground">Filters</SheetTitle>
-              <Button variant="ghost" size="icon" onClick={() => setShowFilters(false)}>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setShowFilters(false)}
+              >
                 <X className="w-5 h-5" />
               </Button>
             </SheetHeader>
@@ -356,61 +493,14 @@ const FindStadiums = () => {
         <div className="flex items-center gap-2 text-sm">
           <Star className="w-4 h-4 text-amber-500" />
           <span className="text-foreground">
-            {stadiums.filter(s => s.isActive).length}
+            {stadiums.filter((s) => s.isActive).length}
           </span>
           <span className="text-muted-foreground">Active Now</span>
         </div>
         <div className="flex items-center gap-2 text-sm">
           <Clock className="w-4 h-4 text-green-500" />
-          <span className="text-foreground">
-            {filteredStadiums.length}
-          </span>
+          <span className="text-foreground">{filteredStadiums.length}</span>
           <span className="text-muted-foreground">Match Your Search</span>
-        </div>
-      </div>
-
-      {/* Map Placeholder */}
-      <div className="card-stadium overflow-hidden">
-        <div className="relative h-64 md:h-80 bg-secondary flex items-center justify-center">
-          <div className="text-center">
-            <MapPin className="w-12 h-12 text-primary mx-auto mb-3" />
-            <p className="text-muted-foreground">Interactive map coming soon</p>
-            <p className="text-sm text-muted-foreground">Find stadiums near your location</p>
-          </div>
-          {/* Map pins preview */}
-          <div className="absolute inset-0 opacity-20 pointer-events-none">
-            {filteredStadiums.slice(0, 4).map((stadium, i) => (
-              <div
-                key={stadium._id}
-                className="absolute w-4 h-4 bg-primary rounded-full animate-pulse"
-                style={{
-                  top: `${20 + i * 15}%`,
-                  left: `${25 + i * 12}%`,
-                }}
-              />
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Results Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <p className="text-muted-foreground">
-            Showing {filteredStadiums.length} of {stadiums.length} stadiums
-          </p>
-        </div>
-        <div className="flex gap-2">
-          {selectedSize !== "all" && (
-            <Badge variant="secondary" className="gap-1">
-              Size: {selectedSize === "10" ? "5v5" : selectedSize === "14" ? "7v7" : "11v11"}
-            </Badge>
-          )}
-          {searchQuery && (
-            <Badge variant="secondary" className="gap-1">
-              Search: "{searchQuery}"
-            </Badge>
-          )}
         </div>
       </div>
 
@@ -418,10 +508,8 @@ const FindStadiums = () => {
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredStadiums.map((stadium) => {
           const cardProps = convertToCardProps(stadium);
-          // You'll need to update StadiumCard to accept these props
           return (
             <div key={stadium._id} className="card-stadium overflow-hidden">
-              {/* Stadium Image */}
               <div className="h-48 relative overflow-hidden">
                 {cardProps.imageUrl ? (
                   <img
@@ -446,7 +534,6 @@ const FindStadiums = () => {
                 )}
               </div>
 
-              {/* Stadium Info */}
               <div className="p-5">
                 <div className="flex items-start justify-between mb-3">
                   <div>
@@ -466,7 +553,6 @@ const FindStadiums = () => {
                   </div>
                 </div>
 
-                {/* Location */}
                 <div className="flex items-start gap-2 text-muted-foreground text-sm mb-4">
                   <MapPin className="w-4 h-4 mt-0.5 flex-shrink-0" />
                   <span className="line-clamp-2">
@@ -474,7 +560,6 @@ const FindStadiums = () => {
                   </span>
                 </div>
 
-                {/* Stadium Details */}
                 <div className="flex flex-wrap gap-2 mb-4">
                   <Badge variant="outline" className="gap-1">
                     <Users className="w-3 h-3" />
@@ -487,20 +572,25 @@ const FindStadiums = () => {
                   )}
                 </div>
 
-                {/* Action Buttons */}
                 <div className="flex gap-2 pt-4 border-t border-border">
                   <Button
-                    variant="outline"
-                    className="flex-1 border-border"
-                    onClick={() => {
-                      // Navigate to stadium details
-                      window.location.href = `/stadium/${stadium._id}`;
-                    }}
+                    className="btn-primary flex-1"
+                    onClick={() => handleBookNow(stadium)}
+                    disabled={
+                      !stadium.isActive ||
+                      !user ||
+                      user.playerType !== "captain"
+                    }
                   >
-                    View Details
-                  </Button>
-                  <Button className="btn-primary flex-1">
-                    Book Now
+                    {!stadium.isActive ? (
+                      <>Unavailable</>
+                    ) : !user ? (
+                      <>Login Required</>
+                    ) : user.playerType !== "captain" ? (
+                      <>Captain Only</>
+                    ) : (
+                      <>Book Now</>
+                    )}
                   </Button>
                 </div>
               </div>
@@ -513,17 +603,18 @@ const FindStadiums = () => {
       {filteredStadiums.length === 0 && stadiums.length > 0 && (
         <div className="text-center py-12">
           <MapPin className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
-          <p className="text-muted-foreground">No stadiums found matching your criteria</p>
+          <p className="text-muted-foreground">
+            No stadiums found matching your criteria
+          </p>
           <Button
             variant="link"
             className="text-primary"
             onClick={() => {
               setSearchQuery("");
-              // Reset price range to include all stadiums
               if (stadiums.length > 0) {
                 const prices = stadiums
-                  .filter(s => s.pricePerHour)
-                  .map(s => s.pricePerHour || 0);
+                  .filter((s) => s.pricePerHour)
+                  .map((s) => s.pricePerHour || 0);
                 if (prices.length > 0) {
                   const minPrice = Math.min(...prices);
                   const maxPrice = Math.max(...prices);
@@ -538,16 +629,181 @@ const FindStadiums = () => {
         </div>
       )}
 
-      {/* No Stadiums State */}
       {stadiums.length === 0 && (
         <div className="text-center py-12">
           <MapPin className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
-          <p className="text-muted-foreground">No stadiums available at the moment</p>
+          <p className="text-muted-foreground">
+            No stadiums available at the moment
+          </p>
           <p className="text-sm text-muted-foreground mt-1">
             Check back later or contact stadium owners to list their venues
           </p>
         </div>
       )}
+
+      {/* Booking Dialog */}
+      <Dialog open={bookingDialogOpen} onOpenChange={setBookingDialogOpen}>
+        <DialogContent className="bg-card border-border max-w-md">
+          <DialogHeader>
+            <DialogTitle>Book Stadium</DialogTitle>
+            <DialogDescription>
+              Reserve {bookingStadium?.name} for your team match
+            </DialogDescription>
+          </DialogHeader>
+
+          {bookingStadium && (
+            <div className="space-y-4 mt-4">
+              {/* Stadium Info */}
+              <div className="p-3 bg-secondary/50 rounded-lg">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-lg bg-primary/20 flex items-center justify-center">
+                    <MapPin className="w-6 h-6 text-primary" />
+                  </div>
+                  <div>
+                    <h4 className="font-medium text-foreground">
+                      {bookingStadium.name}
+                    </h4>
+                    <p className="text-sm text-muted-foreground">
+                      {bookingStadium.location?.address || "No address"}
+                    </p>
+                    {bookingStadium.pricePerHour && (
+                      <p className="text-sm text-primary font-medium">
+                        {bookingStadium.pricePerHour} DZD/hour
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Day Selection */}
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2">
+                  <Calendar className="w-4 h-4" />
+                  Select Day
+                </Label>
+                <div className="grid grid-cols-7 gap-2">
+                  {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(
+                    (day, index) => (
+                      <Button
+                        key={day}
+                        type="button"
+                        variant={
+                          bookingData.weekday === index ? "default" : "outline"
+                        }
+                        className={`h-10 ${
+                          bookingData.weekday === index ? "" : "border-border"
+                        }`}
+                        onClick={() =>
+                          setBookingData({ ...bookingData, weekday: index })
+                        }
+                      >
+                        {day}
+                      </Button>
+                    )
+                  )}
+                </div>
+                {bookingData.weekday !== undefined && (
+                  <p className="text-sm text-muted-foreground">
+                    Selected:{" "}
+                    {ReservationService.formatWeekday(bookingData.weekday)}
+                  </p>
+                )}
+              </div>
+
+              {/* Time Slot Selection */}
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2">
+                  <ClockIcon className="w-4 h-4" />
+                  Select Time Slot
+                </Label>
+                <Select
+                  value={bookingData.session}
+                  onValueChange={(value) =>
+                    setBookingData({ ...bookingData, session: value })
+                  }
+                >
+                  <SelectTrigger className="bg-input border-border">
+                    <SelectValue placeholder="Choose a time slot" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-card border-border">
+                    {availableSessions.map((session) => (
+                      <SelectItem key={session} value={session}>
+                        {ReservationService.formatSession(session)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Additional Notes */}
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2">
+                  <User className="w-4 h-4" />
+                  Additional Notes (Optional)
+                </Label>
+                <Textarea
+                  className="bg-input border-border min-h-[80px]"
+                  placeholder="Any special requests or notes for the stadium owner..."
+                  value={bookingData.notes}
+                  onChange={(e) =>
+                    setBookingData({ ...bookingData, notes: e.target.value })
+                  }
+                />
+              </div>
+
+              {/* Booking Info */}
+              <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                <div className="flex items-start gap-2">
+                  <AlertCircle className="w-4 h-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+                  <div className="text-sm text-blue-700 dark:text-blue-300">
+                    <p className="font-medium mb-1">How booking works:</p>
+                    <ul className="list-disc list-inside space-y-1">
+                      <li>Your request will be sent to the stadium owner</li>
+                      <li>Owner must approve before match is confirmed</li>
+                      <li>You can invite opponent teams after approval</li>
+                      <li>Cancellation policy: 24 hours notice required</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+
+              <DialogFooter className="pt-4">
+                <div className="flex gap-3 w-full">
+                  <Button
+                    variant="outline"
+                    className="flex-1"
+                    onClick={() => setBookingDialogOpen(false)}
+                    disabled={isBooking}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    className="btn-primary flex-1 gap-2"
+                    onClick={handleBookingSubmit}
+                    disabled={
+                      isBooking ||
+                      !bookingData.session ||
+                      bookingData.weekday === undefined
+                    }
+                  >
+                    {isBooking ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Processing...
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle className="w-4 h-4" />
+                        Submit Reservation
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </DialogFooter>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
