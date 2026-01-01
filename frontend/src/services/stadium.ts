@@ -101,6 +101,7 @@ export const getStadiumById = async (stadiumId: string): Promise<GetStadiumRespo
 };
 
 // Create stadium (owner/admin only)
+// services/StadiumService.ts - Update the createStadium function
 export const createStadium = async (
   data: CreateStadiumRequest
 ): Promise<CreateStadiumResponse> => {
@@ -109,26 +110,40 @@ export const createStadium = async (
     
     // Add text fields
     formData.append("name", data.name);
+    
     if (data.pricePerHour !== undefined) {
       formData.append("pricePerHour", data.pricePerHour.toString());
     }
+    
     if (data.maxPlayers !== undefined) {
       formData.append("maxPlayers", data.maxPlayers.toString());
     }
+    
     if (data.isActive !== undefined) {
       formData.append("isActive", data.isActive.toString());
     }
-    if (data.location) {
-      formData.append("location", JSON.stringify(data.location));
+    
+    // FIX: Handle location correctly
+    if (data.location && data.location.address) {
+      // Send location as individual fields OR as JSON string
+      formData.append("address", data.location.address);
+      
+      // If you want to send as JSON object:
+      // formData.append("location", JSON.stringify({
+      //   address: data.location.address,
+      //   lat: data.location.lat || null,
+      //   lng: data.location.lng || null
+      // }));
     }
+    
     if (data.owner) {
-      formData.append("owner", data.owner); // For admin
+      formData.append("owner", data.owner);
     }
 
     // Add image files
     if (data.images && data.images.length > 0) {
       data.images.forEach((image) => {
-        formData.append("images", image); // Field name must match backend
+        formData.append("images", image);
       });
     }
 
@@ -145,7 +160,6 @@ export const createStadium = async (
     );
   }
 };
-
 // Update stadium (owner/admin only)
 export const updateStadium = async (
   stadiumId: string,

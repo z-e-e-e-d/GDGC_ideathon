@@ -6,6 +6,7 @@ const path = require("path");
 // ===============================
 // CREATE a Stadium
 // ===============================
+// controllers/stadiumController.js - Update createStadium function
 const createStadium = async (req, res) => {
   try {
     // Only approved owners and admins can create stadiums
@@ -15,7 +16,22 @@ const createStadium = async (req, res) => {
       });
     }
 
-    const { name, location, pricePerHour, isActive, maxPlayers } = req.body;
+    const { name, pricePerHour, isActive, maxPlayers, address } = req.body;
+    let location = req.body.location;
+
+    // FIX: Handle location parsing
+    if (!location && address) {
+      // If location is not provided but address is, create location object
+      location = { address };
+    } else if (typeof location === "string") {
+      // If location is sent as JSON string, parse it
+      try {
+        location = JSON.parse(location);
+      } catch (err) {
+        console.error("Error parsing location JSON:", err);
+        location = { address: location }; // Fallback to using string as address
+      }
+    }
 
     // If user is owner, automatically set them as the owner
     // If admin, they can specify an owner in the request body
@@ -27,7 +43,8 @@ const createStadium = async (req, res) => {
       // Verify owner is approved
       if (req.user.verification?.status !== "approved") {
         return res.status(403).json({
-          message: "Your owner account must be approved before creating stadiums",
+          message:
+            "Your owner account must be approved before creating stadiums",
         });
       }
     } else if (req.user.role === "admin") {
@@ -47,7 +64,8 @@ const createStadium = async (req, res) => {
       }
       if (ownerExists.verification?.status !== "approved") {
         return res.status(403).json({
-          message: "Owner must be approved before stadiums can be created for them",
+          message:
+            "Owner must be approved before stadiums can be created for them",
         });
       }
 
@@ -57,7 +75,7 @@ const createStadium = async (req, res) => {
     // ✅ Handle uploaded images
     const images = [];
     if (req.files && req.files.length > 0) {
-      req.files.forEach(file => {
+      req.files.forEach((file) => {
         // Store relative URL, NOT absolute path
         const imageUrl = `/uploads/stadiums/${file.filename}`;
         images.push(imageUrl);
@@ -65,13 +83,23 @@ const createStadium = async (req, res) => {
       });
     }
 
+    // FIX: Make sure location is properly structured
+    const locationData =
+      location && location.address
+        ? {
+            address: location.address,
+            lat: location.lat || null,
+            lng: location.lng || null,
+          }
+        : null;
+
     const stadium = await Stadium.create({
       name,
       owner: ownerId,
-      location,
+      location: locationData, // ✅ Use properly structured location
       pricePerHour,
       maxPlayers: maxPlayers || 11,
-      images, // ✅ Add images array
+      images,
       isActive: isActive || false,
     });
 
@@ -86,16 +114,16 @@ const createStadium = async (req, res) => {
     });
   } catch (err) {
     console.error(err);
-    
+
     // Clean up uploaded files on error
     if (req.files && req.files.length > 0) {
-      req.files.forEach(file => {
+      req.files.forEach((file) => {
         if (fs.existsSync(file.path)) {
           fs.unlinkSync(file.path);
         }
       });
     }
-    
+
     res.status(500).json({ message: "Server error", error: err.message });
   }
 };
@@ -164,7 +192,15 @@ const updateStadium = async (req, res) => {
       });
     }
 
-    const { name, location, pricePerHour, isActive, owner, maxPlayers, removeImages } = req.body;
+    const {
+      name,
+      location,
+      pricePerHour,
+      isActive,
+      owner,
+      maxPlayers,
+      removeImages,
+    } = req.body;
 
     // Only admins can change the owner
     if (owner && owner !== stadium.owner.toString()) {
@@ -197,9 +233,9 @@ const updateStadium = async (req, res) => {
     // ✅ Handle image removal
     if (removeImages) {
       let imagesToRemove = [];
-      
+
       // Parse if it's a JSON string
-      if (typeof removeImages === 'string') {
+      if (typeof removeImages === "string") {
         try {
           imagesToRemove = JSON.parse(removeImages);
         } catch (e) {
@@ -209,16 +245,22 @@ const updateStadium = async (req, res) => {
         imagesToRemove = removeImages;
       }
 
-      imagesToRemove.forEach(imageUrl => {
+      imagesToRemove.forEach((imageUrl) => {
         // Remove from database array
         const index = stadium.images.indexOf(imageUrl);
         if (index > -1) {
           stadium.images.splice(index, 1);
-          
+
           // Delete the file from disk
           try {
-            const filename = imageUrl.split('/').pop();
-            const filePath = path.join(__dirname, '..', 'uploads', 'stadiums', filename);
+            const filename = imageUrl.split("/").pop();
+            const filePath = path.join(
+              __dirname,
+              "..",
+              "uploads",
+              "stadiums",
+              filename
+            );
             if (fs.existsSync(filePath)) {
               fs.unlinkSync(filePath);
               console.log("Deleted image:", filename);
@@ -236,18 +278,18 @@ const updateStadium = async (req, res) => {
       const totalImages = stadium.images.length + req.files.length;
       if (totalImages > 5) {
         // Clean up newly uploaded files
-        req.files.forEach(file => {
+        req.files.forEach((file) => {
           if (fs.existsSync(file.path)) {
             fs.unlinkSync(file.path);
           }
         });
-        
+
         return res.status(400).json({
-          message: `Cannot add ${req.files.length} images. Stadium can have maximum 5 images. Currently has ${stadium.images.length}.`
+          message: `Cannot add ${req.files.length} images. Stadium can have maximum 5 images. Currently has ${stadium.images.length}.`,
         });
       }
 
-      req.files.forEach(file => {
+      req.files.forEach((file) => {
         const imageUrl = `/uploads/stadiums/${file.filename}`;
         stadium.images.push(imageUrl);
         console.log("Added new image:", imageUrl);
@@ -264,16 +306,16 @@ const updateStadium = async (req, res) => {
     res.json({ message: "Stadium updated", stadium: updatedStadium });
   } catch (err) {
     console.error(err);
-    
+
     // Clean up uploaded files on error
     if (req.files && req.files.length > 0) {
-      req.files.forEach(file => {
+      req.files.forEach((file) => {
         if (fs.existsSync(file.path)) {
           fs.unlinkSync(file.path);
         }
       });
     }
-    
+
     res.status(500).json({ message: "Server error", error: err.message });
   }
 };
@@ -300,10 +342,16 @@ const deleteStadium = async (req, res) => {
 
     // ✅ Delete all stadium images from disk
     if (stadium.images && stadium.images.length > 0) {
-      stadium.images.forEach(imageUrl => {
+      stadium.images.forEach((imageUrl) => {
         try {
-          const filename = imageUrl.split('/').pop();
-          const filePath = path.join(__dirname, '..', 'uploads', 'stadiums', filename);
+          const filename = imageUrl.split("/").pop();
+          const filePath = path.join(
+            __dirname,
+            "..",
+            "uploads",
+            "stadiums",
+            filename
+          );
           if (fs.existsSync(filePath)) {
             fs.unlinkSync(filePath);
             console.log("Deleted stadium image:", filename);
@@ -381,8 +429,14 @@ const deleteStadiumImage = async (req, res) => {
 
     // Delete file from disk
     try {
-      const filename = imageUrl.split('/').pop();
-      const filePath = path.join(__dirname, '..', 'uploads', 'stadiums', filename);
+      const filename = imageUrl.split("/").pop();
+      const filePath = path.join(
+        __dirname,
+        "..",
+        "uploads",
+        "stadiums",
+        filename
+      );
       if (fs.existsSync(filePath)) {
         fs.unlinkSync(filePath);
       }
@@ -392,9 +446,9 @@ const deleteStadiumImage = async (req, res) => {
 
     await stadium.save();
 
-    res.json({ 
+    res.json({
       message: "Image deleted successfully",
-      stadium 
+      stadium,
     });
   } catch (err) {
     console.error(err);
