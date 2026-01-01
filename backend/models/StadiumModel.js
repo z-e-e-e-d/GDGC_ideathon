@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+
 const StadiumSchema = new mongoose.Schema({
   name: { type: String, required: true },
 
@@ -15,6 +16,8 @@ const StadiumSchema = new mongoose.Schema({
   },
 
   pricePerHour: Number,
+
+  maxPlayers: { type: Number, default: 11 }, // ✅ max players allowed
 
   isActive: { type: Boolean, default: false },
 

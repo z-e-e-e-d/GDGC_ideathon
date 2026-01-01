@@ -8,33 +8,34 @@ const createStadium = async (req, res) => {
   try {
     // Only approved owners and admins can create stadiums
     if (req.user.role !== "owner" && req.user.role !== "admin") {
-      return res.status(403).json({ 
-        message: "Only owners and admins can create stadiums" 
+      return res.status(403).json({
+        message: "Only owners and admins can create stadiums",
       });
     }
 
-    const { name, location, pricePerHour, isActive } = req.body;
+    const { name, location, pricePerHour, isActive, maxPlayers } = req.body;
 
     // If user is owner, automatically set them as the owner
     // If admin, they can specify an owner in the request body
     let ownerId;
-    
+
     if (req.user.role === "owner") {
       ownerId = req.user._id;
-      
+
       // Verify owner is approved
       if (req.user.verification?.status !== "approved") {
-        return res.status(403).json({ 
-          message: "Your owner account must be approved before creating stadiums" 
+        return res.status(403).json({
+          message:
+            "Your owner account must be approved before creating stadiums",
         });
       }
     } else if (req.user.role === "admin") {
       // Admin can create stadium for any owner
       const { owner } = req.body;
-      
+
       if (!owner) {
-        return res.status(400).json({ 
-          message: "Admin must specify an owner when creating a stadium" 
+        return res.status(400).json({
+          message: "Admin must specify an owner when creating a stadium",
         });
       }
 
@@ -44,11 +45,12 @@ const createStadium = async (req, res) => {
         return res.status(404).json({ message: "Owner not found" });
       }
       if (ownerExists.verification?.status !== "approved") {
-        return res.status(403).json({ 
-          message: "Owner must be approved before stadiums can be created for them" 
+        return res.status(403).json({
+          message:
+            "Owner must be approved before stadiums can be created for them",
         });
       }
-      
+
       ownerId = owner;
     }
 
@@ -57,15 +59,18 @@ const createStadium = async (req, res) => {
       owner: ownerId,
       location,
       pricePerHour,
+      maxPlayers: maxPlayers || 11, // default to 11 if not provided
       isActive: isActive || false,
     });
 
-    const populatedStadium = await Stadium.findById(stadium._id)
-      .populate("owner", "fullName email");
+    const populatedStadium = await Stadium.findById(stadium._id).populate(
+      "owner",
+      "fullName email"
+    );
 
-    res.status(201).json({ 
-      message: "Stadium created", 
-      stadium: populatedStadium 
+    res.status(201).json({
+      message: "Stadium created",
+      stadium: populatedStadium,
     });
   } catch (err) {
     console.error(err);
@@ -80,7 +85,7 @@ const getAllStadiums = async (req, res) => {
   try {
     // Optional: Filter by owner if the requesting user is an owner
     let query = {};
-    
+
     if (req.user && req.user.role === "owner") {
       // Owners can see all stadiums, but you might want to add filtering
       // query.owner = req.user._id; // Uncomment to show only their stadiums
@@ -89,7 +94,7 @@ const getAllStadiums = async (req, res) => {
     const stadiums = await Stadium.find(query)
       .populate("owner", "fullName email")
       .sort({ createdAt: -1 });
-      
+
     res.json({ stadiums });
   } catch (err) {
     console.error(err);
@@ -102,8 +107,10 @@ const getAllStadiums = async (req, res) => {
 // ===============================
 const getStadiumById = async (req, res) => {
   try {
-    const stadium = await Stadium.findById(req.params.id)
-      .populate("owner", "fullName email");
+    const stadium = await Stadium.findById(req.params.id).populate(
+      "owner",
+      "fullName email"
+    );
 
     if (!stadium) {
       return res.status(404).json({ message: "Stadium not found" });
@@ -131,18 +138,18 @@ const updateStadium = async (req, res) => {
     const isAdmin = req.user.role === "admin";
 
     if (!isStadiumOwner && !isAdmin) {
-      return res.status(403).json({ 
-        message: "Only the stadium owner or admin can update this stadium" 
+      return res.status(403).json({
+        message: "Only the stadium owner or admin can update this stadium",
       });
     }
 
-    const { name, location, pricePerHour, isActive, owner } = req.body;
+    const { name, location, pricePerHour, isActive, owner, maxPlayers } = req.body;
 
     // Only admins can change the owner
     if (owner && owner !== stadium.owner.toString()) {
       if (req.user.role !== "admin") {
-        return res.status(403).json({ 
-          message: "Only admins can change stadium ownership" 
+        return res.status(403).json({
+          message: "Only admins can change stadium ownership",
         });
       }
 
@@ -152,8 +159,8 @@ const updateStadium = async (req, res) => {
         return res.status(404).json({ message: "New owner not found" });
       }
       if (newOwner.verification?.status !== "approved") {
-        return res.status(403).json({ 
-          message: "New owner must be approved" 
+        return res.status(403).json({
+          message: "New owner must be approved",
         });
       }
 
@@ -165,11 +172,14 @@ const updateStadium = async (req, res) => {
     if (location) stadium.location = location;
     if (pricePerHour !== undefined) stadium.pricePerHour = pricePerHour;
     if (isActive !== undefined) stadium.isActive = isActive;
+    if (maxPlayers !== undefined) stadium.maxPlayers = maxPlayers;
 
     await stadium.save();
 
-    const updatedStadium = await Stadium.findById(stadium._id)
-      .populate("owner", "fullName email");
+    const updatedStadium = await Stadium.findById(stadium._id).populate(
+      "owner",
+      "fullName email"
+    );
 
     res.json({ message: "Stadium updated", stadium: updatedStadium });
   } catch (err) {
@@ -193,8 +203,8 @@ const deleteStadium = async (req, res) => {
     const isAdmin = req.user.role === "admin";
 
     if (!isStadiumOwner && !isAdmin) {
-      return res.status(403).json({ 
-        message: "Only the stadium owner or admin can delete this stadium" 
+      return res.status(403).json({
+        message: "Only the stadium owner or admin can delete this stadium",
       });
     }
 
@@ -213,17 +223,18 @@ const deleteStadium = async (req, res) => {
 const getMyStadiums = async (req, res) => {
   try {
     if (req.user.role !== "owner") {
-      return res.status(403).json({ 
-        message: "Only owners can access this endpoint" 
+      return res.status(403).json({
+        message: "Only owners can access this endpoint",
       });
     }
 
-    const stadiums = await Stadium.find({ owner: req.user._id })
-      .sort({ createdAt: -1 });
+    const stadiums = await Stadium.find({ owner: req.user._id }).sort({
+      createdAt: -1,
+    });
 
-    res.json({ 
+    res.json({
       count: stadiums.length,
-      stadiums 
+      stadiums,
     });
   } catch (err) {
     console.error(err);
