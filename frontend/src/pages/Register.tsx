@@ -13,12 +13,16 @@ import {
   FileText,
   Crown,
   User as UserIcon,
+  Target,
+  Award,
+  Calendar,
 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { UserRole } from "../contexts/AuthContextTypes";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
 import { useToast } from "../hooks/use-toast";
 
 const Register = () => {
@@ -29,6 +33,9 @@ const Register = () => {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [role, setRole] = useState<UserRole>("player");
   const [playerType, setPlayerType] = useState<"captain" | "regularPlayer">("regularPlayer");
+  const [position, setPosition] = useState<string>("");
+  const [skillLevel, setSkillLevel] = useState<string>("");
+  const [age, setAge] = useState<string>("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [documentFile, setDocumentFile] = useState<File | null>(null);
@@ -105,6 +112,36 @@ const Register = () => {
       return;
     }
 
+    // Additional validation for players
+    if (role === "player") {
+      if (!position) {
+        toast({
+          title: "Position required",
+          description: "Please select your preferred position.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (!skillLevel) {
+        toast({
+          title: "Skill level required",
+          description: "Please select your skill level.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (!age || parseInt(age) < 5 || parseInt(age) > 100) {
+        toast({
+          title: "Valid age required",
+          description: "Please enter a valid age between 5 and 100.",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
     // Document validation for owners
     if (role === "owner" && !documentFile) {
       toast({
@@ -119,15 +156,14 @@ const Register = () => {
 
     try {
       if (role === "player") {
-        // Use the selected playerType as the role for the backend
         await registerPlayer(
           email,
           password,
           name,
-          playerType, // Send "captain" or "regularPlayer" as the role
-          "DEF",
-          "beginner",
-          18
+          playerType,
+          position,
+          skillLevel,
+          parseInt(age)
         );
       } else {
         const formData = new FormData();
@@ -298,71 +334,145 @@ const Register = () => {
 
             {/* Player Type Selection (Only for Players) */}
             {role === "player" && (
-              <div className="space-y-2">
-                <Label>Player Type</Label>
-                <div className="grid grid-cols-2 gap-4">
-                  <button
-                    type="button"
-                    onClick={() => setPlayerType("regularPlayer")}
-                    className={`p-4 rounded-xl border-2 transition-all flex flex-col items-center gap-2 ${
-                      playerType === "regularPlayer"
-                        ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
-                        : "border-border bg-card hover:border-blue-500/50"
-                    }`}
-                  >
-                    <UserIcon
-                      className={`w-8 h-8 ${
+              <>
+                <div className="space-y-2">
+                  <Label>Player Type</Label>
+                  <div className="grid grid-cols-2 gap-4">
+                    <button
+                      type="button"
+                      onClick={() => setPlayerType("regularPlayer")}
+                      className={`p-4 rounded-xl border-2 transition-all flex flex-col items-center gap-2 ${
                         playerType === "regularPlayer"
-                          ? "text-blue-500"
-                          : "text-muted-foreground"
-                      }`}
-                    />
-                    <span
-                      className={`font-medium ${
-                        playerType === "regularPlayer" ? "text-blue-500" : "text-foreground"
+                          ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
+                          : "border-border bg-card hover:border-blue-500/50"
                       }`}
                     >
-                      Regular Player
-                    </span>
-                    <p className="text-xs text-muted-foreground text-center">
-                      Join teams and matches
-                    </p>
-                  </button>
+                      <UserIcon
+                        className={`w-8 h-8 ${
+                          playerType === "regularPlayer"
+                            ? "text-blue-500"
+                            : "text-muted-foreground"
+                        }`}
+                      />
+                      <span
+                        className={`font-medium ${
+                          playerType === "regularPlayer" ? "text-blue-500" : "text-foreground"
+                        }`}
+                      >
+                        Regular Player
+                      </span>
+                      <p className="text-xs text-muted-foreground text-center">
+                        Join teams and matches
+                      </p>
+                    </button>
 
-                  <button
-                    type="button"
-                    onClick={() => setPlayerType("captain")}
-                    className={`p-4 rounded-xl border-2 transition-all flex flex-col items-center gap-2 ${
-                      playerType === "captain"
-                        ? "border-amber-500 bg-amber-50 dark:bg-amber-900/20"
-                        : "border-border bg-card hover:border-amber-500/50"
-                    }`}
-                  >
-                    <Crown
-                      className={`w-8 h-8 ${
+                    <button
+                      type="button"
+                      onClick={() => setPlayerType("captain")}
+                      className={`p-4 rounded-xl border-2 transition-all flex flex-col items-center gap-2 ${
                         playerType === "captain"
-                          ? "text-amber-500"
-                          : "text-muted-foreground"
-                      }`}
-                    />
-                    <span
-                      className={`font-medium ${
-                        playerType === "captain" ? "text-amber-500" : "text-foreground"
+                          ? "border-amber-500 bg-amber-50 dark:bg-amber-900/20"
+                          : "border-border bg-card hover:border-amber-500/50"
                       }`}
                     >
-                      Captain
-                    </span>
-                    <p className="text-xs text-muted-foreground text-center">
-                      Create and manage teams
-                    </p>
-                  </button>
+                      <Crown
+                        className={`w-8 h-8 ${
+                          playerType === "captain"
+                            ? "text-amber-500"
+                            : "text-muted-foreground"
+                        }`}
+                      />
+                      <span
+                        className={`font-medium ${
+                          playerType === "captain" ? "text-amber-500" : "text-foreground"
+                        }`}
+                      >
+                        Captain
+                      </span>
+                      <p className="text-xs text-muted-foreground text-center">
+                        Create and manage teams
+                      </p>
+                    </button>
+                  </div>
+                  <p className="text-sm text-muted-foreground mt-2">
+                    {playerType === "captain" 
+                      ? "As a captain, you can create teams, invite players, and manage matches."
+                      : "As a regular player, you can join teams and participate in matches."}
+                  </p>
                 </div>
-                <p className="text-sm text-muted-foreground mt-2">
-                  {playerType === "captain" 
-                    ? "As a captain, you can create teams, invite players, and manage matches."
-                    : "As a regular player, you can join teams and participate in matches."}
-                </p>
-              </div>
+
+                {/* Position */}
+                <div className="space-y-2">
+                  <Label htmlFor="position">
+                    <div className="flex items-center gap-2">
+                      <Target className="w-4 h-4" />
+                      Preferred Position
+                    </div>
+                  </Label>
+                  <Select value={position} onValueChange={setPosition} required>
+                    <SelectTrigger className="bg-input border-border">
+                      <SelectValue placeholder="Select your position" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="GK">Goalkeeper (GK)</SelectItem>
+                      <SelectItem value="DEF">Defender (DEF)</SelectItem>
+                      <SelectItem value="MID">Midfielder (MID)</SelectItem>
+                      <SelectItem value="ATT">Attacker (ATT)</SelectItem>
+                      <SelectItem value="ALL">All Positions (Flexible)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    Where do you prefer to play on the field?
+                  </p>
+                </div>
+
+                {/* Skill Level */}
+                <div className="space-y-2">
+                  <Label htmlFor="skillLevel">
+                    <div className="flex items-center gap-2">
+                      <Award className="w-4 h-4" />
+                      Skill Level
+                    </div>
+                  </Label>
+                  <Select value={skillLevel} onValueChange={setSkillLevel} required>
+                    <SelectTrigger className="bg-input border-border">
+                      <SelectValue placeholder="Select your skill level" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="beginner">Beginner</SelectItem>
+                      <SelectItem value="intermediate">Intermediate</SelectItem>
+                      <SelectItem value="advanced">Advanced</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    Helps match you with players of similar level
+                  </p>
+                </div>
+
+                {/* Age */}
+                <div className="space-y-2">
+                  <Label htmlFor="age">
+                    <div className="flex items-center gap-2">
+                      <Calendar className="w-4 h-4" />
+                      Age
+                    </div>
+                  </Label>
+                  <Input
+                    id="age"
+                    type="number"
+                    placeholder="Enter your age"
+                    value={age}
+                    onChange={(e) => setAge(e.target.value)}
+                    className="bg-input border-border"
+                    min={5}
+                    max={100}
+                    required
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Must be between 5 and 100 years
+                  </p>
+                </div>
+              </>
             )}
 
             {/* Verification Document Upload (Only for Owners) */}
@@ -500,10 +610,30 @@ const Register = () => {
               </div>
             </div>
 
+            {/* Terms and Conditions */}
+            <div className="flex items-start space-x-2 pt-2">
+              <input
+                type="checkbox"
+                id="terms"
+                className="mt-1"
+                required
+              />
+              <label htmlFor="terms" className="text-sm text-muted-foreground">
+                I agree to the{" "}
+                <Link to="/terms" className="text-primary hover:underline">
+                  Terms and Conditions
+                </Link>{" "}
+                and{" "}
+                <Link to="/privacy" className="text-primary hover:underline">
+                  Privacy Policy
+                </Link>
+              </label>
+            </div>
+
             {/* Submit */}
             <Button
               type="submit"
-              className="w-full btn-primary"
+              className="w-full btn-primary mt-4"
               disabled={isLoading}
             >
               {isLoading ? (
