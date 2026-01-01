@@ -9,14 +9,14 @@ const TeamSchema = new mongoose.Schema({
   },
 
   players: [
-    { 
+    {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Player",
     },
   ],
 
   maxPlayers: { type: Number, default: 7 },
-
+  positionsNeeded: { type: String },
   skillLevel: {
     type: String,
     enum: ["beginner", "intermediate", "advanced"],

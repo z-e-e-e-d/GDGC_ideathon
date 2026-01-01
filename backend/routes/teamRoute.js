@@ -2,7 +2,7 @@ const express = require("express");
 const {
   createTeam,
   getAllTeams,
-  getTeamById,
+  getMyTeam,
   updateTeam,
   deleteTeam,
   addPlayerToTeam
@@ -14,7 +14,7 @@ const router = express.Router();
 // CRUD routes
 router.post("/", auth(["admin", "captain"]), createTeam);
 router.get("/", getAllTeams);
-router.get("/:id", getTeamById);
+router.get("/my-team", auth(["captain"]), getMyTeam);
 router.put("/:id", auth(["admin", "captain"]), updateTeam);
 router.delete("/:id", auth(["admin", "captain"]), deleteTeam);
 // Captain adds a player

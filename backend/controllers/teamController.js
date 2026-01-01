@@ -54,23 +54,53 @@ const getAllTeams = async (req, res) => {
 };
 
 // Get team by ID
-const getTeamById = async (req, res) => {
+// Get team of the logged-in captain
+const getMyTeam = async (req, res) => {
   try {
-    const { id } = req.params;
-    const team = await Team.findById(id)
-      .populate("captain", "fullName email")
-      .populate("players", "fullName email");
+    // Only captains can fetch their team
+    if (req.user.role !== "captain") {
+      return res.status(403).json({ message: "Only captains can access their team" });
+    }
+
+    // Find team where this user is captain
+    const team = await Team.findOne({ captain: req.user._id })
+      .populate("captain", "fullName email position")
+      .populate("players", "fullName email position");
 
     if (!team) {
       return res.status(404).json({ message: "Team not found" });
     }
 
-    res.json({ team });
+    // Calculate available slots
+    const availablePlayers = team.maxPlayers - team.players.length;
+
+    // Define max positions for the team
+    const positionCount = {
+      GK: 1,
+      DEF: 4,
+      MID: 4,
+      ATT: 2,
+    };
+
+    // Check which positions are still needed
+    const currentPositions = team.players.map(p => p.position);
+    let positionsNeeded = [];
+    for (let pos in positionCount) {
+      const count = currentPositions.filter(p => p === pos).length;
+      if (count < positionCount[pos]) positionsNeeded.push(pos);
+    }
+
+    res.json({
+      team,
+      availablePlayers,
+      positionsNeeded: positionsNeeded.join(", "),
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Server error", error: err.message });
   }
 };
+
 
 // Update a team
 // Update a team
@@ -183,7 +213,7 @@ const addPlayerToTeam = async (req, res) => {
 module.exports = {
   createTeam,
   getAllTeams,
-  getTeamById,
+  getMyTeam,
   updateTeam,
   deleteTeam,
   addPlayerToTeam,
