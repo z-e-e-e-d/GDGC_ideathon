@@ -18,7 +18,18 @@ const ownerSignup = async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    const documentUrl = req.file ? req.file.path : null;
+    // ✅ FIX: Store relative URL, not absolute path
+    let documentUrl = null;
+    if (req.file) {
+      const folder = req.file.mimetype === "application/pdf" ? "docs" : "images";
+      documentUrl = `/uploads/${folder}/${req.file.filename}`;  // Use filename, not path!
+      
+      console.log("=== OWNER SIGNUP FILE DEBUG ===");
+      console.log("file.path:", req.file.path);
+      console.log("file.filename:", req.file.filename);
+      console.log("Stored URL:", documentUrl);
+      console.log("=== END DEBUG ===");
+    }
 
     const owner = await Owner.create({
       fullName,
@@ -36,6 +47,7 @@ const ownerSignup = async (req, res) => {
       ownerId: owner._id,
     });
   } catch (err) {
+    console.error("Owner signup error:", err);
     res.status(500).json({ message: err.message });
   }
 };

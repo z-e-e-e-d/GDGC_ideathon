@@ -204,12 +204,30 @@ export const uploadVerificationDocument = async (
 };
 
 // View verification document (admin only)
-export const viewVerificationDocument = async (ownerId: string): Promise<Blob> => {
+// services/OwnerService.ts - FIXED viewVerificationDocument
+export const viewVerificationDocument = async (ownerId: string): Promise<string> => {
   try {
-    const response = await axiosInstance.get(`/owners/${ownerId}/document`, {
-      responseType: "blob",
-    });
-    return response.data;
+    // Get the document URL from the backend
+    const response = await axiosInstance.get(`/owners/${ownerId}/document`);
+    
+    // The response.data.data.url will be like "/uploads/images/filename.png"
+    const relativeUrl = response.data.data.url;
+    
+    // ✅ FIX: Construct full URL properly
+    // If baseURL is '/api', we need the origin too
+    const origin = window.location.origin; // e.g., 'http://localhost:8080'
+    
+    // Remove '/api' from baseURL if it exists, since uploads are served at root level
+    const backendOrigin = axiosInstance.defaults.baseURL?.includes('/api')
+      ? 'http://localhost:3000'  // Your backend server origin
+      : axiosInstance.defaults.baseURL || 'http://localhost:3000';
+    
+    // Construct the full URL - uploads are at root, not under /api
+    const fullUrl = `${backendOrigin}${relativeUrl}`;
+    
+    console.log("Document URL:", fullUrl);
+    
+    return fullUrl;
   } catch (error: any) {
     throw new Error(
       error.response?.data?.error || "Failed to view verification document"
@@ -288,3 +306,5 @@ export const openFileInNewTab = (blob: Blob) => {
   window.open(url, "_blank");
   // Note: URL will be revoked when the tab is closed
 };
+
+

@@ -1,4 +1,4 @@
-// controllers/ownerController.js
+// controllers/ownerController.js - FIXED VERSION
 const Owner = require("../models/ownerModel");
 const Admin = require("../models/adminModel");
 const mongoose = require("mongoose");
@@ -26,7 +26,9 @@ const getAllOwners = async (req, res) => {
         query.isVerified = true;
       } else if (verificationStatus === "unverified") {
         query.isVerified = false;
-      } else if (["pending", "approved", "rejected"].includes(verificationStatus)) {
+      } else if (
+        ["pending", "approved", "rejected"].includes(verificationStatus)
+      ) {
         query["verification.status"] = verificationStatus;
       }
     }
@@ -44,8 +46,12 @@ const getAllOwners = async (req, res) => {
       total: await Owner.countDocuments(),
       verified: await Owner.countDocuments({ isVerified: true }),
       pending: await Owner.countDocuments({ "verification.status": "pending" }),
-      approved: await Owner.countDocuments({ "verification.status": "approved" }),
-      rejected: await Owner.countDocuments({ "verification.status": "rejected" }),
+      approved: await Owner.countDocuments({
+        "verification.status": "approved",
+      }),
+      rejected: await Owner.countDocuments({
+        "verification.status": "rejected",
+      }),
     };
 
     res.json({
@@ -75,12 +81,10 @@ const getOwnerById = async (req, res) => {
       });
     }
 
-    const owner = await Owner.findById(id)
-      .select("-password")
-      .populate({
-        path: "verification.reviewedBy",
-        select: "fullName email",
-      });
+    const owner = await Owner.findById(id).select("-password").populate({
+      path: "verification.reviewedBy",
+      select: "fullName email",
+    });
 
     if (!owner) {
       return res.status(404).json({
@@ -144,7 +148,7 @@ const updateVerificationStatus = async (req, res) => {
     owner.verification.reviewedBy = req.user.id; // Admin ID from auth middleware
     owner.verification.reviewedAt = new Date();
     owner.isVerified = status === "approved";
-    
+
     // Add notes if provided
     if (notes) {
       owner.verification.notes = notes;
@@ -153,12 +157,10 @@ const updateVerificationStatus = async (req, res) => {
     await owner.save();
 
     // Get the updated owner with populated reviewer info
-    const updatedOwner = await Owner.findById(id)
-      .select("-password")
-      .populate({
-        path: "verification.reviewedBy",
-        select: "fullName email",
-      });
+    const updatedOwner = await Owner.findById(id).select("-password").populate({
+      path: "verification.reviewedBy",
+      select: "fullName email",
+    });
 
     res.json({
       success: true,
@@ -174,7 +176,9 @@ const updateVerificationStatus = async (req, res) => {
   }
 };
 
-// Upload verification document (from owner side)
+// Upload verification document (from owner side) - FIXED VERSION
+// In uploadVerificationDocument function, replace the storage part:
+// controllers/ownerController.js - FIXED uploadVerificationDocument
 const uploadVerificationDocument = async (req, res) => {
   try {
     const { file } = req;
@@ -186,10 +190,18 @@ const uploadVerificationDocument = async (req, res) => {
       });
     }
 
-    // Validate file type (only allow PDF, JPG, PNG)
+    console.log("=== DEBUG FILE INFO ===");
+    console.log("File object:", {
+      originalname: file.originalname,
+      filename: file.filename, // Just the filename
+      path: file.path, // Absolute path (don't store this!)
+      mimetype: file.mimetype,
+      size: file.size
+    });
+
+    // Validate file type
     const allowedMimeTypes = ["application/pdf", "image/jpeg", "image/png"];
     if (!allowedMimeTypes.includes(file.mimetype)) {
-      // Delete uploaded file
       fs.unlinkSync(file.path);
       return res.status(400).json({
         success: false,
@@ -197,18 +209,11 @@ const uploadVerificationDocument = async (req, res) => {
       });
     }
 
-    // Validate file size (max 5MB)
-    const maxSize = 5 * 1024 * 1024; // 5MB
-    if (file.size > maxSize) {
-      fs.unlinkSync(file.path);
-      return res.status(400).json({
-        success: false,
-        error: "File size too large. Maximum size is 5MB",
-      });
-    }
-
     const owner = await Owner.findById(req.user.id);
     if (!owner) {
+      if (file.path && fs.existsSync(file.path)) {
+        fs.unlinkSync(file.path);
+      }
       return res.status(404).json({
         success: false,
         error: "Owner not found",
@@ -217,22 +222,34 @@ const uploadVerificationDocument = async (req, res) => {
 
     // If there's an existing document, delete it
     if (owner.verification.documentUrl) {
-      const oldFilePath = path.join(
-        __dirname,
-        "..",
-        owner.verification.documentUrl.replace(/^\//, "")
-      );
-      if (fs.existsSync(oldFilePath)) {
-        fs.unlinkSync(oldFilePath);
+      try {
+        // Extract filename from the URL (not from path!)
+        const oldFilename = owner.verification.documentUrl.split('/').pop();
+        const oldFolder = owner.verification.documentUrl.includes('/docs/') ? 'docs' : 'images';
+        const oldFilePath = path.join(__dirname, '..', 'uploads', oldFolder, oldFilename);
+        
+        if (fs.existsSync(oldFilePath)) {
+          fs.unlinkSync(oldFilePath);
+          console.log(`Deleted old file: ${oldFilePath}`);
+        }
+      } catch (deleteError) {
+        console.error("Error deleting old file:", deleteError);
       }
     }
 
-    // Update owner document URL
-    owner.verification.documentUrl = `/uploads/docs/${file.filename}`;
-    owner.verification.status = "pending"; // Reset status to pending
-    owner.isVerified = false; // Reset verification status
+    // ✅ CRITICAL FIX: Store ONLY the relative URL (not absolute path!)
+    const folder = file.mimetype === "application/pdf" ? "docs" : "images";
+    const filename = file.filename; // This is just the filename from multer
+    
+    // Store as a URL path that the frontend can access
+    // This will be accessible at: http://localhost:3000/uploads/images/filename.png
+    owner.verification.documentUrl = `/uploads/${folder}/${filename}`;
+    owner.verification.status = "pending";
+    owner.isVerified = false;
 
     await owner.save();
+
+    console.log(`✅ Stored document URL in DB: ${owner.verification.documentUrl}`);
 
     res.json({
       success: true,
@@ -244,6 +261,12 @@ const uploadVerificationDocument = async (req, res) => {
     });
   } catch (error) {
     console.error("Upload verification document error:", error);
+    
+    // Clean up uploaded file on error
+    if (req.file && req.file.path && fs.existsSync(req.file.path)) {
+      fs.unlinkSync(req.file.path);
+    }
+    
     res.status(500).json({
       success: false,
       error: "Failed to upload verification document",
@@ -251,7 +274,7 @@ const uploadVerificationDocument = async (req, res) => {
   }
 };
 
-// View verification document (admin only)
+// ✅ FIXED: View verification document - return the URL, not try to serve file
 const viewVerificationDocument = async (req, res) => {
   try {
     const { id } = req.params;
@@ -278,44 +301,18 @@ const viewVerificationDocument = async (req, res) => {
       });
     }
 
-    const filePath = path.join(
-      __dirname,
-      "..",
-      owner.verification.documentUrl.replace(/^\//, "")
-    );
-
-    if (!fs.existsSync(filePath)) {
-      return res.status(404).json({
-        success: false,
-        error: "Verification document not found",
-      });
-    }
-
-    // Get file info
-    const fileStats = fs.statSync(filePath);
-    const fileExt = path.extname(filePath).toLowerCase();
-    
-    // Determine content type
-    let contentType = "application/octet-stream";
-    if (fileExt === ".pdf") contentType = "application/pdf";
-    if (fileExt === ".jpg" || fileExt === ".jpeg") contentType = "image/jpeg";
-    if (fileExt === ".png") contentType = "image/png";
-
-    // Send file
-    res.setHeader("Content-Type", contentType);
-    res.setHeader("Content-Length", fileStats.size);
-    res.setHeader(
-      "Content-Disposition",
-      `inline; filename="${path.basename(filePath)}"`
-    );
-
-    const fileStream = fs.createReadStream(filePath);
-    fileStream.pipe(res);
+    // ✅ Return the relative URL that can be accessed via the static middleware
+    res.json({
+      success: true,
+      data: {
+        url: owner.verification.documentUrl, // e.g., "/uploads/images/owner_doc_12345.png"
+      },
+    });
   } catch (error) {
     console.error("View verification document error:", error);
     res.status(500).json({
       success: false,
-      error: "Failed to view verification document",
+      error: "Failed to get document URL",
     });
   }
 };
@@ -551,7 +548,9 @@ const exportOwners = async (req, res) => {
       res.setHeader("Content-Type", "text/csv");
       res.setHeader(
         "Content-Disposition",
-        `attachment; filename=owners_${new Date().toISOString().split("T")[0]}.csv`
+        `attachment; filename=owners_${
+          new Date().toISOString().split("T")[0]
+        }.csv`
       );
       return res.send(csvContent);
     }
@@ -607,7 +606,7 @@ module.exports = {
   getOwnerById,
   updateVerificationStatus,
   uploadVerificationDocument,
-  viewVerificationDocument,
+  viewVerificationDocument, // Make sure this is included
   getDocumentInfo,
   deleteOwner,
   bulkUpdateVerification,

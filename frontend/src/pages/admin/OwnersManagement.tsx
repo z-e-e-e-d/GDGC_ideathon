@@ -13,7 +13,6 @@ import {
   Filter,
   Download,
   Shield,
-  AlertCircle,
   MoreVertical,
   ChevronLeft,
   ChevronRight,
@@ -73,7 +72,6 @@ const OwnersManagement = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [selectedOwner, setSelectedOwner] = useState<Owner | null>(null);
-  const [showDocumentDialog, setShowDocumentDialog] = useState(false);
   const [showActionDialog, setShowActionDialog] = useState(false);
   const [actionType, setActionType] = useState<"approve" | "reject" | null>(null);
   const [actionNotes, setActionNotes] = useState("");
@@ -91,7 +89,7 @@ const OwnersManagement = () => {
 
   useEffect(() => {
     filterOwners();
-  }, [owners, searchTerm, statusFilter]);
+  }, [owners, searchTerm, statusFilter, currentPage]);
 
   const fetchOwners = async () => {
     try {
@@ -153,8 +151,13 @@ const OwnersManagement = () => {
 
     try {
       setIsViewingDocument(true);
-      const blob = await OwnerService.viewVerificationDocument(owner._id);
-      OwnerService.openFileInNewTab(blob);
+      
+      // Get the full document URL from backend
+      const documentUrl = await OwnerService.viewVerificationDocument(owner._id);
+      
+      // Open in new tab
+      window.open(documentUrl, '_blank');
+      
     } catch (error: any) {
       toast({
         title: "Failed to view document",
@@ -235,7 +238,10 @@ const OwnersManagement = () => {
     try {
       const data = await OwnerService.exportOwners("csv");
       if (data instanceof Blob) {
-        OwnerService.downloadFile(data, `owners_export_${new Date().toISOString().split('T')[0]}.csv`);
+        OwnerService.downloadFile(
+          data,
+          `owners_export_${new Date().toISOString().split("T")[0]}.csv`
+        );
       }
     } catch (error: any) {
       toast({
@@ -310,7 +316,9 @@ const OwnersManagement = () => {
         <div className="card-stadium p-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-2xl font-bold text-foreground">{owners.length}</p>
+              <p className="text-2xl font-bold text-foreground">
+                {owners.length}
+              </p>
               <p className="text-sm text-muted-foreground">Total Owners</p>
             </div>
             <Users className="w-8 h-8 text-primary/60" />
@@ -355,7 +363,6 @@ const OwnersManagement = () => {
       <div className="card-stadium p-4">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex-1 flex flex-col md:flex-row gap-4">
-            {/* Search */}
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
               <Input
@@ -366,7 +373,6 @@ const OwnersManagement = () => {
               />
             </div>
 
-            {/* Status Filter */}
             <div className="w-full md:w-48">
               <Select value={statusFilter} onValueChange={setStatusFilter}>
                 <SelectTrigger className="bg-input border-border">
@@ -388,7 +394,6 @@ const OwnersManagement = () => {
           </div>
 
           <div className="flex gap-2">
-            {/* Bulk Actions */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" className="border-border">
@@ -412,24 +417,9 @@ const OwnersManagement = () => {
               </DropdownMenuContent>
             </DropdownMenu>
 
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={fetchOwners}
-              title="Refresh"
-            >
-              <svg
-                className="w-5 h-5"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                />
+            <Button variant="ghost" size="icon" onClick={fetchOwners} title="Refresh">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
               </svg>
             </Button>
           </div>
@@ -442,24 +432,12 @@ const OwnersManagement = () => {
           <table className="w-full">
             <thead className="bg-secondary/50">
               <tr className="border-b border-border">
-                <th className="text-left p-4 text-sm font-medium text-muted-foreground">
-                  Owner
-                </th>
-                <th className="text-left p-4 text-sm font-medium text-muted-foreground">
-                  Status
-                </th>
-                <th className="text-left p-4 text-sm font-medium text-muted-foreground">
-                  Document
-                </th>
-                <th className="text-left p-4 text-sm font-medium text-muted-foreground">
-                  Registered
-                </th>
-                <th className="text-left p-4 text-sm font-medium text-muted-foreground">
-                  Reviewed By
-                </th>
-                <th className="text-left p-4 text-sm font-medium text-muted-foreground">
-                  Actions
-                </th>
+                <th className="text-left p-4 text-sm font-medium text-muted-foreground">Owner</th>
+                <th className="text-left p-4 text-sm font-medium text-muted-foreground">Status</th>
+                <th className="text-left p-4 text-sm font-medium text-muted-foreground">Document</th>
+                <th className="text-left p-4 text-sm font-medium text-muted-foreground">Registered</th>
+                <th className="text-left p-4 text-sm font-medium text-muted-foreground">Reviewed By</th>
+                <th className="text-left p-4 text-sm font-medium text-muted-foreground">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -469,27 +447,20 @@ const OwnersManagement = () => {
                     <Users className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
                     <p className="text-muted-foreground">No owners found</p>
                     <p className="text-sm text-muted-foreground mt-1">
-                      {searchTerm || statusFilter !== "all"
-                        ? "Try adjusting your filters"
-                        : "No owners have registered yet"}
+                      {searchTerm || statusFilter !== "all" ? "Try adjusting your filters" : "No owners have registered yet"}
                     </p>
                   </td>
                 </tr>
               ) : (
                 filteredOwners.map((owner) => (
-                  <tr
-                    key={owner._id}
-                    className="border-b border-border/50 hover:bg-secondary/50 transition-colors"
-                  >
+                  <tr key={owner._id} className="border-b border-border/50 hover:bg-secondary/50 transition-colors">
                     <td className="p-4">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
                           <User className="w-5 h-5 text-primary" />
                         </div>
                         <div>
-                          <p className="font-medium text-foreground">
-                            {owner.fullName}
-                          </p>
+                          <p className="font-medium text-foreground">{owner.fullName}</p>
                           <p className="text-sm text-muted-foreground flex items-center gap-1">
                             <Mail className="w-3 h-3" />
                             {owner.email}
@@ -497,9 +468,7 @@ const OwnersManagement = () => {
                         </div>
                       </div>
                     </td>
-                    <td className="p-4">
-                      {getStatusBadge(owner.verification.status)}
-                    </td>
+                    <td className="p-4">{getStatusBadge(owner.verification.status)}</td>
                     <td className="p-4">
                       <Button
                         variant="ghost"
@@ -512,23 +481,15 @@ const OwnersManagement = () => {
                         {owner.verification.documentUrl ? "View" : "No Document"}
                       </Button>
                     </td>
-                    <td className="p-4 text-sm text-muted-foreground">
-                      {formatDate(owner.createdAt)}
-                    </td>
+                    <td className="p-4 text-sm text-muted-foreground">{formatDate(owner.createdAt)}</td>
                     <td className="p-4">
                       {owner.verification.reviewedBy ? (
                         <div className="text-sm">
-                          <p className="text-foreground">
-                            {owner.verification.reviewedBy.fullName}
-                          </p>
-                          <p className="text-muted-foreground">
-                            {formatDate(owner.verification.reviewedAt || "")}
-                          </p>
+                          <p className="text-foreground">{owner.verification.reviewedBy.fullName}</p>
+                          <p className="text-muted-foreground">{formatDate(owner.verification.reviewedAt || "")}</p>
                         </div>
                       ) : (
-                        <span className="text-sm text-muted-foreground">
-                          Not reviewed
-                        </span>
+                        <span className="text-sm text-muted-foreground">Not reviewed</span>
                       )}
                     </td>
                     <td className="p-4">
@@ -562,15 +523,11 @@ const OwnersManagement = () => {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent>
-                              <DropdownMenuItem
-                                onClick={() => handleActionClick(owner, "approve")}
-                              >
+                              <DropdownMenuItem onClick={() => handleActionClick(owner, "approve")}>
                                 <CheckCircle className="w-4 h-4 mr-2 text-green-500" />
                                 Approve
                               </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() => handleActionClick(owner, "reject")}
-                              >
+                              <DropdownMenuItem onClick={() => handleActionClick(owner, "reject")}>
                                 <XCircle className="w-4 h-4 mr-2 text-red-500" />
                                 Reject
                               </DropdownMenuItem>
@@ -594,49 +551,26 @@ const OwnersManagement = () => {
         {totalPages > 1 && (
           <div className="flex items-center justify-between p-4 border-t border-border">
             <div className="text-sm text-muted-foreground">
-              Showing {(currentPage - 1) * itemsPerPage + 1} to{" "}
-              {Math.min(currentPage * itemsPerPage, owners.length)} of{" "}
-              {owners.length} owners
+              Showing {(currentPage - 1) * itemsPerPage + 1} to {Math.min(currentPage * itemsPerPage, owners.length)} of {owners.length} owners
             </div>
             <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                disabled={currentPage === 1}
-              >
+              <Button variant="outline" size="sm" onClick={() => setCurrentPage((p) => Math.max(1, p - 1))} disabled={currentPage === 1}>
                 <ChevronLeft className="w-4 h-4" />
               </Button>
               {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
                 let pageNum;
-                if (totalPages <= 5) {
-                  pageNum = i + 1;
-                } else if (currentPage <= 3) {
-                  pageNum = i + 1;
-                } else if (currentPage >= totalPages - 2) {
-                  pageNum = totalPages - 4 + i;
-                } else {
-                  pageNum = currentPage - 2 + i;
-                }
+                if (totalPages <= 5) pageNum = i + 1;
+                else if (currentPage <= 3) pageNum = i + 1;
+                else if (currentPage >= totalPages - 2) pageNum = totalPages - 4 + i;
+                else pageNum = currentPage - 2 + i;
 
                 return (
-                  <Button
-                    key={i}
-                    variant={currentPage === pageNum ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setCurrentPage(pageNum)}
-                    className="w-8 h-8 p-0"
-                  >
+                  <Button key={i} variant={currentPage === pageNum ? "default" : "outline"} size="sm" onClick={() => setCurrentPage(pageNum)} className="w-8 h-8 p-0">
                     {pageNum}
                   </Button>
                 );
               })}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                disabled={currentPage === totalPages}
-              >
+              <Button variant="outline" size="sm" onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}>
                 <ChevronRight className="w-4 h-4" />
               </Button>
             </div>
@@ -648,9 +582,7 @@ const OwnersManagement = () => {
       <Dialog open={showActionDialog} onOpenChange={setShowActionDialog}>
         <DialogContent className="bg-card border-border max-w-md">
           <DialogHeader>
-            <DialogTitle>
-              {actionType === "approve" ? "Approve Owner" : "Reject Owner"}
-            </DialogTitle>
+            <DialogTitle>{actionType === "approve" ? "Approve Owner" : "Reject Owner"}</DialogTitle>
             <DialogDescription>
               {actionType === "approve"
                 ? "Are you sure you want to approve this owner? They will be able to list and manage stadiums."
@@ -665,21 +597,13 @@ const OwnersManagement = () => {
                     <User className="w-5 h-5 text-primary" />
                   </div>
                   <div>
-                    <p className="font-medium text-foreground">
-                      {selectedOwner.fullName}
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      {selectedOwner.email}
-                    </p>
+                    <p className="font-medium text-foreground">{selectedOwner.fullName}</p>
+                    <p className="text-sm text-muted-foreground">{selectedOwner.email}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2 mt-2">
                   <FileText className="w-4 h-4 text-muted-foreground" />
-                  <Button
-                    variant="link"
-                    className="p-0 h-auto text-sm"
-                    onClick={() => handleViewDocument(selectedOwner)}
-                  >
+                  <Button variant="link" className="p-0 h-auto text-sm" onClick={() => handleViewDocument(selectedOwner)}>
                     View verification document
                   </Button>
                 </div>
@@ -689,18 +613,12 @@ const OwnersManagement = () => {
             <div className="space-y-2">
               <Label htmlFor="notes">
                 Notes (Optional)
-                <span className="text-muted-foreground text-xs ml-1">
-                  - Will be visible to the owner
-                </span>
+                <span className="text-muted-foreground text-xs ml-1">- Will be visible to the owner</span>
               </Label>
               <textarea
                 id="notes"
                 className="w-full min-h-[80px] p-3 bg-input border border-border rounded-lg text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary/20"
-                placeholder={
-                  actionType === "approve"
-                    ? "Add notes about why this owner was approved..."
-                    : "Add notes about why this owner was rejected..."
-                }
+                placeholder={actionType === "approve" ? "Add notes about why this owner was approved..." : "Add notes about why this owner was rejected..."}
                 value={actionNotes}
                 onChange={(e) => setActionNotes(e.target.value)}
               />
@@ -708,20 +626,11 @@ const OwnersManagement = () => {
 
             <DialogFooter className="pt-4">
               <div className="flex gap-3 w-full">
-                <Button
-                  variant="outline"
-                  className="flex-1"
-                  onClick={() => setShowActionDialog(false)}
-                  disabled={isProcessingAction}
-                >
+                <Button variant="outline" className="flex-1" onClick={() => setShowActionDialog(false)} disabled={isProcessingAction}>
                   Cancel
                 </Button>
                 <Button
-                  className={`flex-1 ${
-                    actionType === "approve"
-                      ? "bg-green-600 hover:bg-green-700"
-                      : "bg-red-600 hover:bg-red-700"
-                  }`}
+                  className={`flex-1 ${actionType === "approve" ? "bg-green-600 hover:bg-green-700" : "bg-red-600 hover:bg-red-700"}`}
                   onClick={handleActionConfirm}
                   disabled={isProcessingAction}
                 >

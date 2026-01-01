@@ -1,50 +1,58 @@
-// upload.js - Update to use consistent path
+// middlewares/multerLocal.js - CORRECTED VERSION
 const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
 
-// ------------------ CONFIG ------------------
+// Upload directory
 const uploadDir = path.join(__dirname, "../uploads");
-if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 
-// ------------------ STORAGE ------------------
+// Storage configuration
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    const folder = /pdf|doc|docx/.test(file.mimetype) ? "docs" : "images";
+    const folder = file.mimetype === "application/pdf" ? "docs" : "images";
     const finalPath = path.join(uploadDir, folder);
-    fs.mkdirSync(finalPath, { recursive: true });
+    
+    // Create folder if it doesn't exist
+    if (!fs.existsSync(finalPath)) {
+      fs.mkdirSync(finalPath, { recursive: true });
+    }
+    
     cb(null, finalPath);
   },
   filename: (req, file, cb) => {
-    const unique = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    // Generate a unique filename
+    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
     const ext = path.extname(file.originalname);
-    const safeName = file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_');
-    cb(null, `file_${unique}_${safeName}`);
-  },
+    
+    // Clean the original filename
+    const originalName = path.basename(file.originalname, ext);
+    const safeName = originalName.replace(/[^a-zA-Z0-9]/g, "_").substring(0, 50);
+    
+    // Store JUST the filename (not path)
+    const filename = `owner_doc_${uniqueSuffix}_${safeName}${ext}`;
+    console.log("Generated filename:", filename); // Debug log
+    
+    cb(null, filename);
+  }
 });
 
-// ------------------ FILE FILTER ------------------
+// File filter
 const fileFilter = (req, file, cb) => {
-  const allowed = /jpeg|jpg|png|gif|pdf|doc|docx/;
-  const extMatch = allowed.test(path.extname(file.originalname).toLowerCase());
-  const mimeMatch = allowed.test(file.mimetype);
-  if (extMatch && mimeMatch) {
+  const allowedTypes = ["application/pdf", "image/jpeg", "image/png"];
+  if (allowedTypes.includes(file.mimetype)) {
     cb(null, true);
   } else {
-    cb(new Error('Only image and document files are allowed'), false);
+    cb(new Error("Only PDF, JPG, and PNG files are allowed"), false);
   }
 };
 
-// ------------------ LIMITS ------------------
-const limits = {
-  fileSize: 5 * 1024 * 1024, // 5MB limit
-};
-
-// **Export the multer instance**
-const upload = multer({ 
-  storage, 
-  fileFilter,
-  limits 
+// Multer instance
+const upload = multer({
+  storage: storage,
+  fileFilter: fileFilter,
+  limits: {
+    fileSize: 5 * 1024 * 1024 // 5MB
+  }
 });
 
 module.exports = upload;
