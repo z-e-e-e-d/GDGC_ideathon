@@ -1,22 +1,23 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
-
-export type UserRole = "player" | "owner";
-
-export interface User {
-  id: string;
-  email: string;
-  name: string;
-  role: UserRole;
-  avatar?: string;
-}
+import * as AuthService from "../services/auth";
+import { User, UserRole } from "./AuthContextTypes";
 
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string, name: string, role: UserRole) => Promise<void>;
-  logout: () => void;
+  registerPlayer: (
+    email: string,
+    password: string,
+    fullName: string,
+    role: UserRole,
+    position: string,
+    skillLevel: string,
+    age: number
+  ) => Promise<void>;
+  registerOwner: (formData: FormData) => Promise<void>;
+  logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -26,10 +27,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Check for existing token on mount
     const token = localStorage.getItem("koralink_token");
     const savedUser = localStorage.getItem("koralink_user");
-    
+
     if (token && savedUser) {
       try {
         setUser(JSON.parse(savedUser));
@@ -41,83 +41,84 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setIsLoading(false);
   }, []);
 
+  // Login
   const login = async (email: string, password: string) => {
-    // Simulate API call - replace with actual backend integration
     setIsLoading(true);
     try {
-      // Mock login - in production, this would be an API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // For demo purposes, check stored users or create mock
-      const storedUsers = JSON.parse(localStorage.getItem("koralink_users") || "[]");
-      const foundUser = storedUsers.find((u: any) => u.email === email);
-      
-      if (foundUser && foundUser.password === password) {
-        const userData: User = {
-          id: foundUser.id,
-          email: foundUser.email,
-          name: foundUser.name,
-          role: foundUser.role,
-        };
-        
-        const token = btoa(JSON.stringify({ id: userData.id, exp: Date.now() + 86400000 }));
-        localStorage.setItem("koralink_token", token);
-        localStorage.setItem("koralink_user", JSON.stringify(userData));
-        setUser(userData);
-      } else {
-        throw new Error("Invalid credentials");
-      }
+      const data = await AuthService.login(email, password);
+
+      const loggedInUser: User = {
+        id: data.user.id,
+        name: data.user.fullName,
+        role: data.user.role,
+        age: data.user.age,
+      };
+
+      localStorage.setItem("koralink_token", data.token);
+      localStorage.setItem("koralink_user", JSON.stringify(loggedInUser));
+      setUser(loggedInUser);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const register = async (email: string, password: string, name: string, role: UserRole) => {
+  // Register player
+  const registerPlayer = async (
+    email: string,
+    password: string,
+    fullName: string,
+    role: UserRole,
+    position: string,
+    skillLevel: string,
+    age: number
+  ) => {
     setIsLoading(true);
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      const storedUsers = JSON.parse(localStorage.getItem("koralink_users") || "[]");
-      
-      if (storedUsers.some((u: any) => u.email === email)) {
-        throw new Error("Email already exists");
-      }
-      
-      const newUser = {
-        id: crypto.randomUUID(),
-        email,
-        password,
-        name,
-        role,
+      const data = await AuthService.playerSignup(email, password, fullName, role, position, skillLevel, age);
+
+      const loggedInUser: User = {
+        id: data.user.id,
+        name: data.user.fullName,
+        role: data.user.role,
+        age: data.user.age,
       };
-      
-      storedUsers.push(newUser);
-      localStorage.setItem("koralink_users", JSON.stringify(storedUsers));
-      
-      const userData: User = {
-        id: newUser.id,
-        email: newUser.email,
-        name: newUser.name,
-        role: newUser.role,
-      };
-      
-      const token = btoa(JSON.stringify({ id: userData.id, exp: Date.now() + 86400000 }));
-      localStorage.setItem("koralink_token", token);
-      localStorage.setItem("koralink_user", JSON.stringify(userData));
-      setUser(userData);
+
+      localStorage.setItem("koralink_token", data.token);
+      localStorage.setItem("koralink_user", JSON.stringify(loggedInUser));
+      setUser(loggedInUser);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const logout = () => {
-    localStorage.removeItem("koralink_token");
-    localStorage.removeItem("koralink_user");
-    setUser(null);
+  // Register owner
+  const registerOwner = async (formData: FormData) => {
+    setIsLoading(true);
+    try {
+      const data = await AuthService.ownerSignup(formData);
+      console.log(data.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Logout
+  const logout = async () => {
+    setIsLoading(true);
+    try {
+      await AuthService.logout();
+      setUser(null);
+      localStorage.removeItem("koralink_token");
+      localStorage.removeItem("koralink_user");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
-    <AuthContext.Provider value={{ user, isAuthenticated: !!user, isLoading, login, register, logout }}>
+    <AuthContext.Provider
+      value={{ user, isAuthenticated: !!user, isLoading, login, registerPlayer, registerOwner, logout }}
+    >
       {children}
     </AuthContext.Provider>
   );
@@ -125,8 +126,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error("useAuth must be used within an AuthProvider");
-  }
+  if (!context) throw new Error("useAuth must be used within an AuthProvider");
   return context;
 };
+
+export default AuthProvider;

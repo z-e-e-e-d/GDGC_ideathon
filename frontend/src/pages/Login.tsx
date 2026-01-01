@@ -12,7 +12,7 @@ const Login = () => {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  
+
   const { login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -25,24 +25,27 @@ const Login = () => {
     setIsLoading(true);
 
     try {
-      await login(email, password);
+      await login(email, password); // Calls AuthService.login
       toast({
         title: "Welcome back!",
         description: "You've successfully logged in.",
       });
-      
-      // Redirect to the page they tried to visit or dashboard
+
+      // Redirect based on user role
       const storedUser = localStorage.getItem("koralink_user");
       if (storedUser) {
         const user = JSON.parse(storedUser);
-        navigate(user.role === "player" ? "/player" : "/owner", { replace: true });
+        navigate(user.role === "player" ? "/player" : "/owner", {
+          replace: true,
+        });
       } else {
-        navigate(from, { replace: true });
+        navigate("/", { replace: true });
       }
-    } catch (error) {
+    } catch (err: any) {
+      // Show backend message if exists
       toast({
         title: "Login failed",
-        description: "Invalid email or password. Please try again.",
+        description: err.response?.data?.message || "Invalid email or password",
         variant: "destructive",
       });
     } finally {
@@ -58,14 +61,18 @@ const Login = () => {
           {/* Logo */}
           <Link to="/" className="flex items-center gap-2 mb-8">
             <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center">
-              <span className="text-primary-foreground font-display text-lg">K</span>
+              <span className="text-primary-foreground font-display text-lg">
+                K
+              </span>
             </div>
             <span className="font-display text-xl text-foreground">
               Kora<span className="text-primary">Link</span>
             </span>
           </Link>
 
-          <h1 className="font-display text-3xl text-foreground mb-2">Welcome Back</h1>
+          <h1 className="font-display text-3xl text-foreground mb-2">
+            Welcome Back
+          </h1>
           <p className="text-muted-foreground mb-8">
             Sign in to continue to your account
           </p>
@@ -92,7 +99,10 @@ const Login = () => {
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label htmlFor="password">Password</Label>
-                <Link to="/forgot-password" className="text-sm text-primary hover:underline">
+                <Link
+                  to="/forgot-password"
+                  className="text-sm text-primary hover:underline"
+                >
                   Forgot password?
                 </Link>
               </div>
@@ -112,13 +122,21 @@ const Login = () => {
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                 >
-                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  {showPassword ? (
+                    <EyeOff className="w-5 h-5" />
+                  ) : (
+                    <Eye className="w-5 h-5" />
+                  )}
                 </button>
               </div>
             </div>
 
             {/* Submit */}
-            <Button type="submit" className="w-full btn-primary" disabled={isLoading}>
+            <Button
+              type="submit"
+              className="w-full btn-primary"
+              disabled={isLoading}
+            >
               {isLoading ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -132,7 +150,10 @@ const Login = () => {
 
           <p className="text-center text-muted-foreground mt-6">
             Don't have an account?{" "}
-            <Link to="/register" className="text-primary hover:underline font-medium">
+            <Link
+              to="/register"
+              className="text-primary hover:underline font-medium"
+            >
               Sign up
             </Link>
           </p>
@@ -144,13 +165,13 @@ const Login = () => {
         <div className="absolute inset-0 pitch-pattern opacity-20" />
         <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-white/10 rounded-full blur-3xl" />
         <div className="absolute bottom-1/4 right-1/4 w-48 h-48 bg-white/5 rounded-full blur-2xl" />
-        
+
         <div className="relative z-10 text-center p-12">
           <h2 className="font-display text-4xl text-white mb-4">
             Ready to Play?
           </h2>
           <p className="text-white/80 text-lg max-w-md">
-            Join thousands of players and stadium owners on Algeria's premier 
+            Join thousands of players and stadium owners on Algeria's premier
             football booking platform.
           </p>
         </div>
