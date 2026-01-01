@@ -17,7 +17,13 @@ const StadiumSchema = new mongoose.Schema({
 
   pricePerHour: Number,
 
-  maxPlayers: { type: Number, default: 11 }, // ✅ max players allowed
+  maxPlayers: { type: Number, default: 11 },
+
+  // ✅ Add images field
+  images: {
+    type: [String], // Array of image URLs
+    default: []
+  },
 
   isActive: { type: Boolean, default: false },
 
