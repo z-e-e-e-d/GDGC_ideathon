@@ -10,7 +10,7 @@ const upload = require("../middlewares/multerLocal");
 
 const router = express.Router();
 
-router.post("/signup/owner", upload.single("file"), ownerSignup);
+router.post("/signup/owner", upload.single("document"), ownerSignup);
 router.post("/signup/player", playerSignup);
 router.post("/login", login);
 router.post("/logout", logout);
