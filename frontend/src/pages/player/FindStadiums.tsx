@@ -15,6 +15,11 @@ import {
   CheckCircle,
   XCircle,
   AlertCircle,
+  Mail,
+  User as UserIcon,
+  Info,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
@@ -49,6 +54,62 @@ import {
 } from "../../components/ui/dialog";
 import { Label } from "../../components/ui/label";
 import { Textarea } from "../../components/ui/textarea";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "../../components/ui/collapsible";
+
+// Add this utility function at the top of your component or in a separate file
+const generateTimeSlots = (): string[] => {
+  const slots: string[] = [];
+  let startHour = 8;
+  let startMinute = 30;
+
+  while (startHour < 22 || (startHour === 22 && startMinute === 0)) {
+    const endHour = startHour + Math.floor((startMinute + 90) / 60);
+    const endMinute = (startMinute + 90) % 60;
+
+    const startTime = `${startHour.toString().padStart(2, "0")}:${startMinute
+      .toString()
+      .padStart(2, "0")}`;
+    const endTime = `${endHour.toString().padStart(2, "0")}:${endMinute
+      .toString()
+      .padStart(2, "0")}`;
+
+    slots.push(`${startTime}-${endTime}`);
+
+    // Move to next slot
+    startHour = endHour;
+    startMinute = endMinute;
+  }
+
+  return slots;
+};
+
+// Helper function to get day name from weekday number
+const getDayName = (weekday: number): string => {
+  const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  return days[weekday] || "Unknown day";
+};
+
+interface ReservationDetail {
+  _id: string;
+  captainName: string;
+  captainEmail: string;
+  teamName: string;
+  day: string;
+  time: string;
+  status: string;
+  notes?: string;
+  createdAt: string;
+}
+
+interface StadiumReservationInfo {
+  stadiumId: string;
+  reservations: ReservationDetail[];
+  showDetails: boolean;
+}
 
 const FindStadiums = () => {
   const [stadiums, setStadiums] = useState<StadiumService.Stadium[]>([]);
@@ -71,6 +132,8 @@ const FindStadiums = () => {
     notes: "",
   });
   const [availableSessions, setAvailableSessions] = useState<string[]>([]);
+  const [stadiumReservations, setStadiumReservations] = useState<StadiumReservationInfo[]>([]);
+  const [loadingReservations, setLoadingReservations] = useState<Record<string, boolean>>({});
 
   const { toast } = useToast();
   const { user } = useAuth();
@@ -108,6 +171,105 @@ const FindStadiums = () => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const fetchStadiumReservations = async (stadiumId: string) => {
+    try {
+      setLoadingReservations(prev => ({ ...prev, [stadiumId]: true }));
+      
+      const response = await ReservationService.getStadiumReservations(stadiumId);
+      
+      if (response.reservations && response.reservations.length > 0) {
+        const reservationDetails = response.reservations.map((reservation: any) => {
+          // Extract team and captain information
+          const team = reservation.requestingTeam as any;
+          const captain = team?.captain || {};
+          
+          return {
+            _id: reservation._id,
+            captainName: captain.fullName || "Unknown Captain",
+            captainEmail: captain.email || "No email",
+            teamName: team?.name || "Unknown Team",
+            day: getDayName(reservation.weekday),
+            time: reservation.session,
+            status: reservation.status,
+            notes: reservation.notes,
+            createdAt: new Date(reservation.createdAt).toLocaleDateString()
+          };
+        });
+
+        // Update or add stadium reservations
+        setStadiumReservations(prev => {
+          const existingIndex = prev.findIndex(s => s.stadiumId === stadiumId);
+          if (existingIndex >= 0) {
+            const updated = [...prev];
+            updated[existingIndex] = {
+              ...updated[existingIndex],
+              reservations: reservationDetails
+            };
+            return updated;
+          } else {
+            return [...prev, {
+              stadiumId,
+              reservations: reservationDetails,
+              showDetails: false
+            }];
+          }
+        });
+      } else {
+        // If no reservations, ensure stadium is in the list with empty array
+        setStadiumReservations(prev => {
+          const existingIndex = prev.findIndex(s => s.stadiumId === stadiumId);
+          if (existingIndex >= 0) {
+            return prev;
+          } else {
+            return [...prev, {
+              stadiumId,
+              reservations: [],
+              showDetails: false
+            }];
+          }
+        });
+      }
+    } catch (error: any) {
+      console.error("Failed to fetch stadium reservations:", error);
+      toast({
+        title: "Failed to load reservations",
+        description: "Could not fetch reservation details",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingReservations(prev => ({ ...prev, [stadiumId]: false }));
+    }
+  };
+
+  const toggleReservationDetails = (stadiumId: string) => {
+    setStadiumReservations(prev => {
+      const existingIndex = prev.findIndex(s => s.stadiumId === stadiumId);
+      if (existingIndex >= 0) {
+        const updated = [...prev];
+        updated[existingIndex] = {
+          ...updated[existingIndex],
+          showDetails: !updated[existingIndex].showDetails
+        };
+        
+        // Fetch reservations if not already loaded
+        if (!updated[existingIndex].showDetails && updated[existingIndex].reservations.length === 0) {
+          fetchStadiumReservations(stadiumId);
+        }
+        
+        return updated;
+      } else {
+        // If not in list, add it and fetch reservations
+        const newReservationInfo = {
+          stadiumId,
+          reservations: [],
+          showDetails: true
+        };
+        fetchStadiumReservations(stadiumId);
+        return [...prev, newReservationInfo];
+      }
+    });
   };
 
   const filterAndSortStadiums = () => {
@@ -196,7 +358,11 @@ const FindStadiums = () => {
       weekday: 0,
       notes: "",
     });
-    setAvailableSessions(["morning", "afternoon", "evening", "night"]);
+
+    // Generate time slots from 08:30 to 22:00 with 90-minute intervals
+    const timeSlots = generateTimeSlots();
+    setAvailableSessions(timeSlots);
+
     setBookingDialogOpen(true);
   };
 
@@ -230,6 +396,9 @@ const FindStadiums = () => {
         title: "Reservation created!",
         description: "Your stadium reservation request has been submitted",
       });
+
+      // Refresh reservations for this stadium after booking
+      fetchStadiumReservations(bookingStadium._id);
 
       setBookingDialogOpen(false);
       setBookingStadium(null);
@@ -368,6 +537,22 @@ const FindStadiums = () => {
     </div>
   );
 
+  // Helper function to get status badge
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'approved':
+        return <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Approved</Badge>;
+      case 'pending':
+        return <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100">Pending</Badge>;
+      case 'matched':
+        return <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100">Matched</Badge>;
+      case 'rejected':
+        return <Badge className="bg-red-100 text-red-800 hover:bg-red-100">Rejected</Badge>;
+      default:
+        return <Badge variant="outline">{status}</Badge>;
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -392,7 +577,9 @@ const FindStadiums = () => {
           <Button
             variant="ghost"
             size="icon"
-            onClick={fetchStadiums}
+            onClick={() => {
+              fetchStadiums();
+            }}
             title="Refresh"
           >
             <Loader2 className="w-4 h-4" />
@@ -508,8 +695,12 @@ const FindStadiums = () => {
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredStadiums.map((stadium) => {
           const cardProps = convertToCardProps(stadium);
+          const stadiumReservation = stadiumReservations.find(s => s.stadiumId === stadium._id);
+          const hasReservations = stadiumReservation && stadiumReservation.reservations.length > 0;
+          const isLoading = loadingReservations[stadium._id];
+          
           return (
-            <div key={stadium._id} className="card-stadium overflow-hidden">
+            <div key={stadium._id} className="card-stadium overflow-hidden border border-border rounded-lg">
               <div className="h-48 relative overflow-hidden">
                 {cardProps.imageUrl ? (
                   <img
@@ -530,6 +721,11 @@ const FindStadiums = () => {
                 {stadium.pricePerHour && (
                   <div className="absolute bottom-2 left-2 bg-background/90 backdrop-blur-sm text-foreground px-3 py-1 rounded-lg font-medium">
                     {stadium.pricePerHour} DZD/hr
+                  </div>
+                )}
+                {hasReservations && (
+                  <div className="absolute top-2 left-2 bg-blue-600 text-white text-xs px-2 py-1 rounded">
+                    {stadiumReservation?.reservations.length} {stadiumReservation?.reservations.length === 1 ? 'Reservation' : 'Reservations'}
                   </div>
                 )}
               </div>
@@ -553,6 +749,20 @@ const FindStadiums = () => {
                   </div>
                 </div>
 
+                {/* Owner Information */}
+                <div className="mb-3">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
+                    <UserIcon className="w-4 h-4" />
+                    <span className="font-medium">Owner:</span>
+                    <span>{stadium.owner?.fullName || "Unknown"}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Mail className="w-4 h-4" />
+                    <span className="font-medium">Email:</span>
+                    <span className="truncate">{stadium.owner?.email || "No email"}</span>
+                  </div>
+                </div>
+
                 <div className="flex items-start gap-2 text-muted-foreground text-sm mb-4">
                   <MapPin className="w-4 h-4 mt-0.5 flex-shrink-0" />
                   <span className="line-clamp-2">
@@ -572,6 +782,94 @@ const FindStadiums = () => {
                   )}
                 </div>
 
+                {/* Reservation Details Collapsible */}
+                {hasReservations && (
+                  <Collapsible
+                    open={stadiumReservation?.showDetails || false}
+                    onOpenChange={() => toggleReservationDetails(stadium._id)}
+                    className="mb-4"
+                  >
+                    <CollapsibleTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className="w-full justify-between mb-2"
+                        disabled={isLoading}
+                      >
+                        <div className="flex items-center gap-2">
+                          <Info className="w-4 h-4" />
+                          <span>Reservation Details</span>
+                          <Badge variant="secondary" className="ml-2">
+                            {stadiumReservation?.reservations.length}
+                          </Badge>
+                        </div>
+                        {isLoading ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : stadiumReservation?.showDetails ? (
+                          <ChevronUp className="w-4 h-4" />
+                        ) : (
+                          <ChevronDown className="w-4 h-4" />
+                        )}
+                      </Button>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <div className="space-y-3 p-3 bg-gray-50 dark:bg-gray-900/20 rounded-lg">
+                        {isLoading ? (
+                          <div className="flex items-center justify-center py-4">
+                            <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                          </div>
+                        ) : stadiumReservation?.reservations.length === 0 ? (
+                          <p className="text-sm text-muted-foreground text-center py-2">
+                            No reservations found
+                          </p>
+                        ) : (
+                          stadiumReservation?.reservations.map((reservation) => (
+                            <div key={reservation._id} className="p-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">
+                              <div className="flex justify-between items-start mb-2">
+                                <div>
+                                  <p className="font-medium text-sm">{reservation.teamName}</p>
+                                  {getStatusBadge(reservation.status)}
+                                </div>
+                                <span className="text-xs text-muted-foreground">
+                                  {reservation.createdAt}
+                                </span>
+                              </div>
+                              
+                              <div className="space-y-2 text-sm">
+                                <div className="flex items-center gap-2">
+                                  <UserIcon className="w-3 h-3" />
+                                  <span className="font-medium">Captain:</span>
+                                  <span className="text-foreground">{reservation.captainName}</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <Mail className="w-3 h-3" />
+                                  <span className="font-medium">Email:</span>
+                                  <span className="text-foreground truncate">{reservation.captainEmail}</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <Calendar className="w-3 h-3" />
+                                  <span className="font-medium">Day:</span>
+                                  <span className="text-foreground">{reservation.day}</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <ClockIcon className="w-3 h-3" />
+                                  <span className="font-medium">Time:</span>
+                                  <span className="text-foreground">{reservation.time}</span>
+                                </div>
+                                {reservation.notes && (
+                                  <div className="mt-2 p-2 bg-blue-50 dark:bg-blue-900/20 rounded">
+                                    <p className="text-xs font-medium text-blue-700 dark:text-blue-300">Notes:</p>
+                                    <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">{reservation.notes}</p>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </CollapsibleContent>
+                  </Collapsible>
+                )}
+
                 <div className="flex gap-2 pt-4 border-t border-border">
                   <Button
                     className="btn-primary flex-1"
@@ -590,6 +888,23 @@ const FindStadiums = () => {
                       <>Captain Only</>
                     ) : (
                       <>Book Now</>
+                    )}
+                  </Button>
+                  
+                  {/* Details Button */}
+                  <Button
+                    variant="outline"
+                    className="flex-1 border-border"
+                    onClick={() => toggleReservationDetails(stadium._id)}
+                    disabled={isLoading}
+                  >
+                    {isLoading ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <Info className="w-4 h-4" />
+                        <span>Details</span>
+                      </div>
                     )}
                   </Button>
                 </div>
@@ -675,6 +990,23 @@ const FindStadiums = () => {
                 </div>
               </div>
 
+              {/* Owner Information in Booking Dialog */}
+              <div className="p-3 bg-gray-50 dark:bg-gray-900/20 rounded-lg">
+                <p className="text-sm font-medium text-foreground mb-2">Owner Details:</p>
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div className="flex items-center gap-2">
+                    <UserIcon className="w-4 h-4" />
+                    <span className="text-muted-foreground">Name:</span>
+                    <span className="font-medium">{bookingStadium.owner?.fullName || "Unknown"}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Mail className="w-4 h-4" />
+                    <span className="text-muted-foreground">Email:</span>
+                    <span className="font-medium truncate">{bookingStadium.owner?.email || "No email"}</span>
+                  </div>
+                </div>
+              </div>
+
               {/* Day Selection */}
               <div className="space-y-2">
                 <Label className="flex items-center gap-2">
@@ -725,10 +1057,10 @@ const FindStadiums = () => {
                   <SelectTrigger className="bg-input border-border">
                     <SelectValue placeholder="Choose a time slot" />
                   </SelectTrigger>
-                  <SelectContent className="bg-card border-border">
+                  <SelectContent className="bg-card border-border max-h-60">
                     {availableSessions.map((session) => (
                       <SelectItem key={session} value={session}>
-                        {ReservationService.formatSession(session)}
+                        {session}
                       </SelectItem>
                     ))}
                   </SelectContent>
