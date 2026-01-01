@@ -210,6 +210,106 @@ const addPlayerToTeam = async (req, res) => {
   }
 };
 
+
+const searchPlayersByEmail = async (req, res) => {
+  try {
+    const { email } = req.query;
+
+    if (!email) {
+      return res
+        .status(400)
+        .json({ message: "Email query parameter is required" });
+    }
+
+    // Search for players by email (case-insensitive, partial match)
+    const players = await Player.find({
+      email: { $regex: email, $options: "i" },
+    }).select("fullName email position skillLevel age");
+
+    res.json({ players });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
+
+// Get player by exact email
+const getPlayerByEmail = async (req, res) => {
+  try {
+    const { email } = req.params;
+
+    const player = await Player.findOne({ email: email.toLowerCase() }).select(
+      "fullName email position skillLevel age"
+    );
+
+    if (!player) {
+      return res.status(404).json({ message: "Player not found" });
+    }
+
+    res.json({ player });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
+// controllers/teamController.js - Add this function
+
+// Add a player to a team by email
+const addPlayerByEmail = async (req, res) => {
+  try {
+    const { teamId } = req.params;
+    const { email } = req.body;
+
+    const team = await Team.findById(teamId);
+    if (!team) return res.status(404).json({ message: "Team not found" });
+
+    // Only captain can add players
+    if (team.captain.toString() !== req.user._id.toString()) {
+      return res
+        .status(403)
+        .json({ message: "Only the captain can add players" });
+    }
+
+    // Find player by email
+    const player = await Player.findOne({ email: email.toLowerCase() });
+    if (!player) return res.status(404).json({ message: "Player not found" });
+
+    // Check duplicates
+    if (team.players.includes(player._id)) {
+      return res.status(400).json({ message: "Player already in team" });
+    }
+
+    // Check maxPlayers limit
+    if (team.players.length >= team.maxPlayers) {
+      return res.status(400).json({ message: "Team is full" });
+    }
+
+    // Add player to team
+    team.players.push(player._id);
+    await team.save();
+
+    // Populate the player details for response
+    const updatedTeam = await Team.findById(teamId)
+      .populate("captain", "fullName email")
+      .populate("players", "fullName email position");
+
+    res.json({ 
+      message: "Player added to team", 
+      team: updatedTeam,
+      addedPlayer: {
+        _id: player._id,
+        fullName: player.fullName,
+        email: player.email,
+        position: player.position
+      }
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
+
+
 module.exports = {
   createTeam,
   getAllTeams,
@@ -217,4 +317,7 @@ module.exports = {
   updateTeam,
   deleteTeam,
   addPlayerToTeam,
+  searchPlayersByEmail,
+  getPlayerByEmail,
+  addPlayerByEmail
 };
